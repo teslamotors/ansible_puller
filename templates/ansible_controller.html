@@ -1,0 +1,75 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    </head>
+    <body>
+        <div class="container">
+            <h1 class="display-4 text-center">{{.Hostname}}</h1></br>
+
+        {{if .AnsibleDisabled}}
+            <div class="card border-danger mb-3 text-center w-50 mx-auto">
+                <div class="card-body text-danger">
+                    <h3 class="card-title text-center"><u>Ansible is Disabled</u></h3>
+                    <p class="card-text">{{ .DisableReason }}</p>
+                    <br>
+                    <form action="/ansible/enable" method="POST">
+                        <input class="btn btn-outline-primary" type="submit" value="Re-enable Ansible Puller">
+                    </form>
+                </div>
+            </div>
+        {{end}}
+
+            <div class="row">
+                <div class="col-sm-6">
+                    <div class="card text-center">
+                        <div class="card-header">Job Status</div>
+                        <div class="card-body">
+                            {{if .JobRunning}}
+                                <h3 class="card-text text-success">Running</h3>
+                            {{else}}
+                                <h3 class="card-text text-secondary">Not Running</h3>
+                            {{end}}
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6">
+                    <div class="card text-center">
+                        <div class="card-header">Last Run</div>
+                        <div class="card-body">
+                            {{if .AnsibleLastRunSuccess}}
+                                <h3 class="card-text text-success">Succeeded</h3>
+                            {{else}}
+                                <h3 class="card-text text-danger">Failed</h3>
+                            {{end}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        {{if not .AnsibleDisabled}}
+            <br>
+            <form action="/ansible/disable" method="POST">
+                <div class="input-group mb-3">
+                    <div class="input-group-prepend">
+                        <button class="btn btn-outline-danger" type="submit" value="Disable">Disable</button>
+                    </div>
+                    <input type="text" class="form-control border-danger" name="disable-reason" placeholder="Name & Reason you are disabling">
+                </div>
+            </form>
+        {{end}}
+
+            <br>
+            <form action="/ansible/adhoc-run" method="POST">
+                <div class="text-center mx-auto w-25">
+                    <input class="btn btn-outline-primary btn-block" type="submit" value="Run Now">
+                </div>
+            </form>
+
+            <div class="text-right">
+                <a href="/"><- Back</a>
+            </div>
+        </div>
+    </body>
+</html>
