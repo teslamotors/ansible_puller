@@ -82,14 +82,16 @@ Config file should be in: `/etc/ansible-puller/config.json`, `$HOME/.ansible-pul
 This daemon uses Ansible's `json` STDOUT callback to parse the results of this run for this host.
 It currently produces the number of tasks that are ok, skipped, changed, failed, or unreachable.
 
-
-| Metric                        | Description                                             |
-|-------------------------------|---------------------------------------------------------|
-| `ansible_puller_runs`         | The number of runs since the daemon started             | 
-| `ansible_puller_running`      | Whether or not the puller is currently preforming a run |
-| `ansible_puller_disabled`     | Whether or not the puller is disabled                   | 
-| `ansible_puller_last_success` | Timestamp of the last successful run                    | 
-| `ansible_play_summary`        | List of task statuses for the host                      | 
+| Metric                            | Description                                                  |
+|-----------------------------------|--------------------------------------------------------------|
+| `ansible_puller_debug`            | Whether or not debug mode is enabled                         |
+| `ansible_puller_disabled`         | Whether or not the puller is disabled                        |
+| `ansible_puller_last_success`     | Last timestamp of a successful run                           |
+| `ansible_puller_play_summary`     | Ansible metrics: changed, failures, ok, skipped, unreachable |
+| `ansible_puller_run_time_seconds` | How long Ansible took to run to completion                   |
+| `ansible_puller_running`          | Whether or not the puller is currently running               |
+| `ansible_puller_runs`             | How many times the puller has run                            |
+| `ansible_puller_version`          | Version (git sha) of the puller                              |
 
 ## Runtime Dependencies
 
