@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -94,7 +93,7 @@ func (c VenvCommand) Run() (string, string, error) {
 
 	path, ok := os.LookupEnv("PATH")
 	if !ok {
-		return "", "", errors.New("Unable to lookup the $PATH env variable")
+		logrus.Error("unable to lookup the $PATH env variable")
 	}
 
 	// Updating $PATH variable to include the venv path
