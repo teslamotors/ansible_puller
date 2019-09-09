@@ -90,7 +90,7 @@ func (c VenvCommand) Run() (string, string, error) {
 
 	path, ok := os.LookupEnv("PATH")
 	if !ok {
-		logrus.Error("unable to lookup the $PATH env variable")
+		return "", "", errors.New("Unable to lookup the $PATH env variable")
 	}
 
 	// Updating $PATH variable to include the venv path
