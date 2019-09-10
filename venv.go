@@ -5,9 +5,11 @@ package main
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -85,6 +87,19 @@ func (c VenvCommand) Run() (string, string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), venvCommandTimeout)
 
 	defer cancel() // The cancel should be deferred so resources are cleaned up
+
+	path, ok := os.LookupEnv("PATH")
+	if !ok {
+		return "", "", errors.New("Unable to lookup the $PATH env variable")
+	}
+
+	// Updating $PATH variable to include the venv path
+	venvPath := filepath.Join(c.Config.Path, "bin")
+	if !strings.Contains(path, venvPath) {
+		newVenvPath := fmt.Sprintf("%s:%s", filepath.Join(c.Config.Path, "bin"), path)
+		logrus.Debugln("PATH: ", newVenvPath)
+		os.Setenv("PATH", newVenvPath)
+	}
 
 	cmd := exec.CommandContext(
 		ctx,
