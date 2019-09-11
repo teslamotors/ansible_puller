@@ -4,12 +4,15 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
+	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 )
 
 // AnsibleConfig is a collection of meta-information about an Ansible repository.
@@ -17,28 +20,68 @@ import (
 // The virtualenv specified by the VenvConfig needs to be initialized before running Ansible commands.
 // All dir paths are relative to the root of the source tarball.
 type AnsibleConfig struct {
-	VenvConfig         VenvConfig // Virtualenv config that Ansible will be executed in
-	Cwd                string     // Path to change to when running Ansible commands
-	InventoryList      []string   // Paths to all desired inventories
+	VenvConfig    VenvConfig // Virtualenv config that Ansible will be executed in
+	Cwd           string     // Path to change to when running Ansible commands
+	InventoryList []string   // Paths to all desired inventories
 }
 
-// FindInventoryForHost takes a hostname and returns the inventory where the host was found.
+// CreateAnsibleTargetsList generates and returns an array of possible targets
+// The possible targets are ip addresses from the host interfaces or the hostname itself
+func CreateAnsibleTargetsList() ([]string, error) {
+	var inventoryTargets = []string{}
+
+	// extract all ip addresses except the loopback one and add the hostname as a last fallback mechanism
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return []string{}, errors.Wrap(err, "Unable to get the network interfaces")
+	}
+	for _, i := range ifaces {
+		addrs, err := i.Addrs()
+		if err != nil {
+			return []string{}, errors.Wrap(err, fmt.Sprintf("Unable to extract the ip addresses from %s", i.Name))
+		}
+		for _, addr := range addrs {
+			var ip net.IP
+			switch v := addr.(type) {
+			case *net.IPNet:
+				ip = v.IP
+			case *net.IPAddr:
+				ip = v.IP
+			}
+			if ip == nil || ip.IsLoopback() {
+				continue
+			}
+			inventoryTargets = append(inventoryTargets, ip.String())
+		}
+	}
+	inventoryTargets = append(inventoryTargets, hostname)
+	return inventoryTargets, nil
+}
+
+// FindInventoryForHost calls CreateAnsibleTargetsList to get a list of possible targets
+// and returns the inventory and target that was found in that inventory.
+// It stops on the first target match meaning that it assumes that hosts are
+// defined by only 1 type of target like their eth0 ip address or hostname
 // If the host was not found, it returns an error.
 //
 // This will check against all of the defined inventories in ansibleCfg.InventoryList,
 // relative to the path defined in ansibleCfg.Cwd.
 //
 // The given hostname should be the full name that appears in the Ansible inventories.
-func (a AnsibleConfig) FindInventoryForHost(host string) (string, error) {
+func (a AnsibleConfig) FindInventoryForHost() (string, string, error) {
+	targets, err := CreateAnsibleTargetsList()
+	if err != nil {
+		return "", "", errors.Wrap(err, "Failed to perform the CreateAnsibleTargetsList command")
+	}
 	for _, item := range a.InventoryList {
 		inv := filepath.Join(a.Cwd, item)
 		_, err := os.Stat(inv)
 		if err != nil {
 			if os.IsNotExist(err) {
-				return "", errors.Wrapf(err, "unable to find inventory: %s", item)
+				return "", "", errors.Wrapf(err, "unable to find inventory: %s", item)
 			}
 
-			return "", err
+			return "", "", err
 		}
 
 		vCmd := VenvCommand{
@@ -51,18 +94,17 @@ func (a AnsibleConfig) FindInventoryForHost(host string) (string, error) {
 		output, _, err := vCmd.Run()
 		if err != nil {
 			logrus.Debugln("Ansible inventory output:", output)
-			return "", errors.Wrap(err, "unable to list hosts for "+item)
+			return "", "", errors.Wrap(err, "unable to list hosts for "+item)
 		}
-
-		if strings.Contains(output, host) {
-			logrus.Debug("Found ", host, " in inventory ", inv)
-			return inv, nil
+		for _, target := range targets {
+			if strings.Contains(output, target) {
+				logrus.Debug("Found ", target, " in inventory ", inv)
+				return inv, target, nil
+			}
+			logrus.Debug("Did not find ", target, " in inventory ", inv)
 		}
-
-		logrus.Debug("Did not find ", host, " in inventory ", inv)
 	}
-
-	return "", errors.New("Unable to detect hostname in any inventory: " + host)
+	return "", "", errors.New("Unable to find one of the target in any inventory")
 }
 
 // AnsibleNodeStatus contains status information for a single node's Ansible run.
@@ -76,7 +118,7 @@ type AnsibleNodeStatus struct {
 
 // AnsibleRunOutput is a collection of all of the information given by an Ansible run.
 type AnsibleRunOutput struct {
-	Stats map[string]AnsibleNodeStatus `json:"stats"`
+	Stats  map[string]AnsibleNodeStatus `json:"stats"`
 	Stdout string
 	Stderr string
 }

@@ -210,8 +210,8 @@ func ansibleRun() error {
 		InventoryList: viper.GetStringSlice("ansible-inventory"),
 	}
 
-	runLogger.Infoln("Finding inventory for host:", hostname)
-	inventory, err := aCfg.FindInventoryForHost(hostname)
+	runLogger.Infoln("Finding inventory for the current host")
+	inventory, target, err := aCfg.FindInventoryForHost()
 	if err != nil {
 		return err
 	}
@@ -220,7 +220,7 @@ func ansibleRun() error {
 		AnsibleConfig:   aCfg,
 		PlaybookPath:    viper.GetString("ansible-playbook"),
 		InventoryPath:   inventory,
-		LimitExpr:       hostname,
+		LimitExpr:       target,
 		LocalConnection: true,
 	}
 
