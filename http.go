@@ -3,13 +3,15 @@
 package main
 
 import (
+	"encoding/json"
+	"html/template"
+	"net/http"
+	"time"
+
 	"github.com/gobuffalo/packr/v2"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/viper"
-	"html/template"
-	"net/http"
-	"time"
 )
 
 const (
@@ -17,6 +19,7 @@ const (
 	httpPathAnsibleDisable      = "/ansible/disable"
 	httpPathAnsibleEnable       = "/ansible/enable"
 	httpPathAnsibleControl      = "/ansible/control"
+	httpPathStatus              = "/ansible/status"
 )
 
 var (
@@ -96,6 +99,26 @@ func HandlerIndex(w http.ResponseWriter, r *http.Request) {
 	_ = t.Execute(w, data)
 }
 
+func HandlerStatus(w http.ResponseWriter, r *http.Request) {
+	status := map[string]interface{}{
+		"app_name":                 appName,
+		"hostname":                 hostname,
+		"ansible_disabled":         ansibleDisabled,
+		"ansible_running":          ansibleRunning,
+		"ansible_last_run_success": ansibleLastRunSuccess,
+		"version":                  Version,
+	}
+
+	data, err := json.Marshal(status)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(data)
+}
+
 // NewServer creates a new http server
 //
 // runChan is a channel that we will write to when the adhocTrigger handler is invoked.
@@ -108,6 +131,7 @@ func NewServer(runChan chan bool) *http.Server {
 	r.HandleFunc(httpPathAnsibleDisable, HandlerAnsibleDisable).Methods("POST")
 	r.HandleFunc(httpPathAnsibleEnable, HandlerAnsibleEnable).Methods("POST")
 	r.HandleFunc(httpPathAnsibleControl, HandlerAnsibleControl).Methods("GET")
+	r.HandleFunc(httpPathStatus, HandlerStatus).Methods("GET")
 
 	srv := &http.Server{
 		Handler:      r,
