@@ -3,9 +3,11 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -37,6 +39,7 @@ func makeVenv(cfg VenvConfig) error {
 
 	err = cmd.Run()
 	if err != nil {
+		failedCommandLogger(cmd)
 		return errors.Wrap(err, "unable to create virtual environment")
 	}
 
@@ -73,16 +76,17 @@ func (c VenvConfig) Update(requirementsFile string) error {
 
 // VenvCommand enables you to run a system command in a virtualenv.
 type VenvCommand struct {
-	Config VenvConfig
-	Binary string   // path to the binary under $venv/bin
-	Args   []string // args to pass to the command that is called
-	Cwd    string   // Directory to change to, if needed
-	Env    []string // Additions to the runtime environment
+	Config       VenvConfig
+	Binary       string   // path to the binary under $venv/bin
+	Args         []string // args to pass to the command that is called
+	Cwd          string   // Directory to change to, if needed
+	Env          []string // Additions to the runtime environment
+	StreamOutput bool     // Whether or not the application should stream output stdout/stderr
 }
 
 // Run will execute the command described in VenvCommand.
 //
-// The string returned is the combined Stdout/Stderr.
+// The strings returned are Stdout/Stderr.
 func (c VenvCommand) Run() (string, string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), venvCommandTimeout)
 
@@ -113,15 +117,44 @@ func (c VenvCommand) Run() (string, string, error) {
 
 	cmd.Env = append(os.Environ(), c.Env...)
 
-	logrus.Debugln("Running venv command: ", cmd.Args)
+	if c.StreamOutput {
+		stdout, _ := cmd.StdoutPipe()
+		stderr, _ := cmd.StderrPipe()
+		if err := cmd.Start(); err != nil {
+			return "", "", errors.Wrap(err, "unable to start command")
+		}
+
+		for _, stream := range []io.ReadCloser{stdout, stderr} {
+			go func(s io.ReadCloser) {
+				scanner := bufio.NewScanner(s)
+				scanner.Split(bufio.ScanLines)
+				for scanner.Scan() {
+					m := scanner.Text()
+					fmt.Println(m)
+				}
+			}(stream)
+		}
+
+		if err := cmd.Wait(); err != nil {
+			return "", "", errors.Wrap(err, "unable to complete command")
+		}
+
+		return "", "", nil
+	}
+
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
+
+	logrus.Debugln("Running venv command: ", cmd.Args)
 	err := cmd.Run()
-	stdoutStr, stderrStr := string(stdout.Bytes()), string(stderr.Bytes())
+
+	stdoutStr, stderrStr := stdout.String(), stderr.String()
+
 	if ctx.Err() == context.DeadlineExceeded {
 		return stdoutStr, stderrStr, errors.Wrap(err, "Execution timed out")
 	} else if err != nil {
+		failedCommandLogger(cmd)
 		return stdoutStr, stderrStr, errors.Wrap(err, "unable to complete command")
 	}
 
