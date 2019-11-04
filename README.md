@@ -76,6 +76,7 @@ Config file should be in: `/etc/ansible-puller/config.json`, `$HOME/.ansible-pul
 | `sleep`                  | `30`                                  | How often to trigger run events in minutes                                              |          |
 | `start-disabled`         | `false`                               | Whether or not to start wth Ansbile disabled (good for debugging)                       |          |
 | `debug`                  | `false`                               | Whether or not to start in debug mode                                                   |          |
+| `once`                   | `false`                               | Only run the configured playbook once and then stop                                     |          |
 
 ### Monitoring with prometheus
 
@@ -111,8 +112,17 @@ Note that this project uses packer v2.
 
 ### Doing Things
 
-To run locally: `go run .`
+#### Running Locally
+ 
+`go run .`
 
-To build a production release: `GOOS=linux GOARCH=amd64 packr2 build` (see [build-release.sh](build-release.sh))
+#### Building a Production Release
 
-For debugging the application, use the `--debug` flag, or the `debug` option in the config file. It'll make the logs a little easier to read.
+`GOOS=linux GOARCH=amd64 packr2 build` (see [build-release.sh](build-release.sh))
+
+#### Debugging an Ansible Run
+
+For debugging the application, use the `--debug` flag, or the `debug` option in the config file.
+This streams the Ansible output to the console so that you can follow along in the run.
+
+Also consider using the `--once` flag to run the process just once and then exit without spinning up the webserver.

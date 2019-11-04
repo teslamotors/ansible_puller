@@ -5,14 +5,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 	"net"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 )
 
 // AnsibleConfig is a collection of meta-information about an Ansible repository.
@@ -148,9 +147,16 @@ func (a AnsiblePlaybookRunner) Run() (AnsibleRunOutput, error) {
 	}
 
 	if len(a.Env) == 0 {
-		a.Env = []string{
-			"ANSIBLE_STDOUT_CALLBACK=json",
-			"ANSIBLE_CALLBACK_WHITELIST=",
+		if viper.GetBool("debug") {
+			a.Env = []string{
+				"ANSIBLE_STDOUT_CALLBACK=default",
+				"ANSIBLE_CALLBACK_WHITELIST=",
+			}
+		} else {
+			a.Env = []string{
+				"ANSIBLE_STDOUT_CALLBACK=json",
+				"ANSIBLE_CALLBACK_WHITELIST=",
+			}
 		}
 	}
 
@@ -162,13 +168,20 @@ func (a AnsiblePlaybookRunner) Run() (AnsibleRunOutput, error) {
 		Env:    a.Env,
 	}
 
+	if viper.GetBool("debug") {
+		vCmd.StreamOutput = true
+	}
+
 	stdout, stderr, err := vCmd.Run()
 	if err != nil {
-		logrus.Debug("Ansible stdout:\n", stdout, "Ansible stderr:\n", stderr)
 		return AnsibleRunOutput{}, errors.Wrap(err, "ansible run failed")
 	}
 
 	var ansibleOutput AnsibleRunOutput
+	if viper.GetBool("debug") {
+		return ansibleOutput, nil
+	}
+
 	err = json.Unmarshal([]byte(stdout), &ansibleOutput)
 	if err != nil {
 		logrus.Debug("Ansible stdout:\n", stdout, "Ansible stderr:\n", stderr)
