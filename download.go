@@ -6,13 +6,14 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
-	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 // Calculates the md5sum of a local file
@@ -42,9 +43,8 @@ func downloadFile(url, path, user, pass string) error {
 		return err
 	}
 
-	timeout := time.Duration(5 * time.Second)
 	client := http.Client{
-		Timeout: timeout,
+		Timeout: time.Second * 15,
 	}
 
 	req, _ := http.NewRequest("GET", url, nil)
