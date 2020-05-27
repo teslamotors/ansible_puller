@@ -16,7 +16,6 @@ func failedCommandLogger(cmd *exec.Cmd) {
 	}
 }
 
-
 // trimWhiteSpace trims all the leading and trailing whitespace of a multi-line string
 func trimMultilineWhiteSpace(s string) string {
 	ss := strings.Split(s, "\n")

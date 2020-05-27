@@ -1,14 +1,15 @@
 package main
 
 import (
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
+	"testing"
+	"time"
 
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"time"
 )
 
 var (
@@ -25,185 +26,167 @@ var (
 	testBasicAuthPass     = "bar&r6j6ehw5:qae^^%#$as45"
 )
 
-var _ = Describe("Download", func() {
-	var testServer *httptest.Server
+// Register the below test suite
+func TestDownloadTestSuite(t *testing.T) {
+	suite.Run(t, new(DownloadTestSuite))
+}
 
-	BeforeEach(func() {
-		testServer = httptest.NewServer(
-			http.HandlerFunc(
-				func(rw http.ResponseWriter, req *http.Request) {
-					user, pass, ok := req.BasicAuth()
-					if ok {
-						if user == testBasicAuthUser && pass == testBasicAuthPass {
-							rw.Write(testBasicAuthText)
-							return
-						}
-						rw.WriteHeader(http.StatusUnauthorized)
+type DownloadTestSuite struct {
+	suite.Suite
+	testServer *httptest.Server
+}
+
+func (s *DownloadTestSuite) SetupTest() {
+	s.testServer = httptest.NewServer(
+		http.HandlerFunc(
+			func(rw http.ResponseWriter, req *http.Request) {
+				user, pass, ok := req.BasicAuth()
+				if ok {
+					if user == testBasicAuthUser && pass == testBasicAuthPass {
+						rw.Write(testBasicAuthText)
 						return
 					}
+					rw.WriteHeader(http.StatusUnauthorized)
+					return
+				}
 
-					switch req.URL.String() {
-					case "/" + testFilename:
-						rw.Write(testText)
-					case "/" + testFilename + ".md5":
-						rw.Write([]byte(testMD5))
-					case "/" + testHashlessFilename:
-						rw.Write(testHashlessText)
-					default:
-						rw.Write([]byte("this is not the text you are looking for"))
-					}
-				}))
-	})
+				switch req.URL.String() {
+				case "/" + testFilename:
+					rw.Write(testText)
+				case "/" + testFilename + ".md5":
+					rw.Write([]byte(testMD5))
+				case "/" + testHashlessFilename:
+					rw.Write(testHashlessText)
+				default:
+					rw.Write([]byte("this is not the text you are looking for"))
+				}
+			}))
+}
 
-	AfterEach(func() {
-		testServer.Close()
-		os.RemoveAll(testFilename)
-		os.RemoveAll(testHashlessFilename)
-		os.RemoveAll(testBasicAuthFilename)
-	})
+func (s *DownloadTestSuite) TearDownTest() {
+	s.testServer.Close()
+	os.RemoveAll(testFilename)
+	os.RemoveAll(testHashlessFilename)
+	os.RemoveAll(testBasicAuthFilename)
+}
 
-	Describe("checking an md5sum", func() {
-		Context("from a file on the filesystem", func() {
-			It("should return the correct hash", func() {
-				ioutil.WriteFile(testFilename, testText, 0644)
+func (s *DownloadTestSuite) TestMD5Sum() {
+	err := ioutil.WriteFile(testFilename, testText, 0644)
+	assert.Nil(s.T(), err)
 
-				sum, err := md5sum(testFilename)
-				Expect(err).To(BeNil())
-				Expect(sum).To(Equal(testMD5))
-			})
-		})
-	})
+	sum, err := md5sum(testFilename)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), sum, testMD5)
+}
 
-	Describe("downloading a file", func() {
-		Context("when nothing currently exists on disk", func() {
-			It("should download a new file", func() {
-				err := downloadFile(testServer.URL+"/"+testFilename, testFilename, "", "")
-				Expect(err).To(BeNil())
+func (s *DownloadTestSuite) TestDownloadFile() {
+	err := downloadFile(s.testServer.URL+"/"+testFilename, testFilename, "", "")
+	assert.Nil(s.T(), err)
 
-				text, err := ioutil.ReadFile(testFilename)
-				Expect(err).To(BeNil())
-				Expect(text).To(Equal(testText))
-			})
-		})
-	})
+	text, err := ioutil.ReadFile(testFilename)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), text, testText)
+}
 
-	Describe("idempotently downloading a file", func() {
-		Context("when nothing currently exists on disk", func() {
-			It("should download a new file", func() {
-				err := idempotentFileDownload(testServer.URL+"/"+testFilename, testFilename, "", "")
-				Expect(err).To(BeNil())
+func (s *DownloadTestSuite) TestIdempotentDownloadWhenNoFileExists() {
+	err := idempotentFileDownload(s.testServer.URL+"/"+testFilename, testFilename, "", "")
+	assert.Nil(s.T(), err)
 
-				text, err := ioutil.ReadFile(testFilename)
-				Expect(err).To(BeNil())
-				Expect(text).To(Equal(testText))
-			})
-		})
+	text, err := ioutil.ReadFile(testFilename)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), text, testText)
+}
 
-		Context("when the file exists on disk", func() {
-			It("should not download a new file", func() {
-				err := idempotentFileDownload(testServer.URL+"/"+testFilename, testFilename, "", "")
-				Expect(err).To(BeNil())
+func (s *DownloadTestSuite) TestIdempotentDownloadWhenCurrentFileExists() {
+	err := idempotentFileDownload(s.testServer.URL+"/"+testFilename, testFilename, "", "")
+	assert.Nil(s.T(), err)
 
-				text, err := ioutil.ReadFile(testFilename)
-				Expect(err).To(BeNil())
-				Expect(text).To(Equal(testText))
+	text, err := ioutil.ReadFile(testFilename)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), text, testText, "file should download correctly")
 
-				// Get original file info
-				finfo, err := os.Stat(testFilename)
-				Expect(err).To(BeNil())
+	// Get original file info
+	finfo, err := os.Stat(testFilename)
+	assert.Nil(s.T(), err)
 
-				modtime := finfo.ModTime()
+	modtime := finfo.ModTime()
 
-				// wait a few milliseconds
-				time.Sleep(50 * time.Millisecond)
+	// Idempotent Download
+	err = idempotentFileDownload(s.testServer.URL+"/"+testFilename, testFilename, "", "")
+	assert.Nil(s.T(), err)
 
-				// Idempotent Download
-				err = idempotentFileDownload(testServer.URL+"/"+testFilename, testFilename, "", "")
-				Expect(err).To(BeNil())
+	newFinfo, err := os.Stat(testFilename)
+	newModtime := newFinfo.ModTime()
 
-				newFinfo, err := os.Stat(testFilename)
-				newModtime := newFinfo.ModTime()
+	// Make sure the file didn't change
+	assert.Equal(s.T(), modtime, newModtime, "modification time should not change")
+}
 
-				// Make sure the file didn't change
-				Expect(modtime).To(Equal(newModtime))
-			})
-		})
+func (s *DownloadTestSuite) TestIdempotentDownloadWhenOldFileExists() {
+	err := idempotentFileDownload(s.testServer.URL+"/something-else", testFilename, "", "")
+	assert.Nil(s.T(), err)
 
-		Context("when the file exists on disk and has a different hash", func() {
-			It("should download a new file", func() {
-				err := idempotentFileDownload(testServer.URL+"/something-else", testFilename, "", "")
-				Expect(err).To(BeNil())
+	_, err = ioutil.ReadFile(testFilename)
+	assert.Nil(s.T(), err)
 
-				_, err = ioutil.ReadFile(testFilename)
-				Expect(err).To(BeNil())
+	// Get original file info
+	finfo, err := os.Stat(testFilename)
+	assert.Nil(s.T(), err)
 
-				// Get original file info
-				finfo, err := os.Stat(testFilename)
-				Expect(err).To(BeNil())
+	modtime := finfo.ModTime()
 
-				modtime := finfo.ModTime()
+	// on linux time is in seconds, so we needs to wait at least one
+	time.Sleep(1 * time.Second)
 
-				// wait a few milliseconds
-				time.Sleep(50 * time.Millisecond)
+	// Idempotent Download
+	err = idempotentFileDownload(s.testServer.URL+"/"+testFilename, testFilename, "", "")
+	assert.Nil(s.T(), err)
 
-				// Idempotent Download
-				err = idempotentFileDownload(testServer.URL+"/"+testFilename, testFilename, "", "")
-				Expect(err).To(BeNil())
+	newFinfo, err := os.Stat(testFilename)
+	newModtime := newFinfo.ModTime()
 
-				newFinfo, err := os.Stat(testFilename)
-				newModtime := newFinfo.ModTime()
+	// Make sure the file changed
+	assert.NotEqual(s.T(), modtime, newModtime, "modification time should change")
+}
 
-				// Make sure the file changed
-				Expect(modtime).NotTo(Equal(newModtime))
-			})
-		})
+func (s *DownloadTestSuite) TestIdempotentDownloadNoRemoteHash() {
+	err := idempotentFileDownload(s.testServer.URL+"/"+testHashlessFilename, testHashlessFilename, "", "")
+	assert.Nil(s.T(), err)
 
-		Context("when the hashless file exists on disk", func() {
-			It("should download a new file", func() {
-				err := idempotentFileDownload(testServer.URL+"/"+testHashlessFilename, testHashlessFilename, "", "")
-				Expect(err).To(BeNil())
+	text, err := ioutil.ReadFile(testHashlessFilename)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), testHashlessText, text)
 
-				text, err := ioutil.ReadFile(testHashlessFilename)
-				Expect(err).To(BeNil())
-				Expect(text).To(Equal(testHashlessText))
+	// Get original file info
+	finfo, err := os.Stat(testHashlessFilename)
+	assert.Nil(s.T(), err)
 
-				// Get original file info
-				finfo, err := os.Stat(testHashlessFilename)
-				Expect(err).To(BeNil())
+	modtime := finfo.ModTime()
 
-				modtime := finfo.ModTime()
+	// on linux time is in seconds, so we needs to wait at least one
+	time.Sleep(1 * time.Second)
 
-				// wait a few milliseconds
-				time.Sleep(50 * time.Millisecond)
+	// Idempotent Download
+	err = idempotentFileDownload(s.testServer.URL+"/"+testHashlessFilename, testHashlessFilename, "", "")
+	assert.Nil(s.T(), err)
 
-				// Idempotent Download
-				err = idempotentFileDownload(testServer.URL+"/"+testHashlessFilename, testHashlessFilename, "", "")
-				Expect(err).To(BeNil())
+	newFinfo, err := os.Stat(testHashlessFilename)
+	newModtime := newFinfo.ModTime()
 
-				newFinfo, err := os.Stat(testHashlessFilename)
-				newModtime := newFinfo.ModTime()
+	// Make sure the file changed
+	assert.NotEqual(s.T(), modtime, newModtime, "new file should be downloaded")
+}
 
-				// Make sure the file changed
-				Expect(modtime).NotTo(Equal(newModtime))
-			})
-		})
+func (s *DownloadTestSuite) TestIdempotentDownloadBasicAuth() {
+	err := idempotentFileDownload(s.testServer.URL+"/"+testBasicAuthFilename, testBasicAuthFilename, testBasicAuthUser, testBasicAuthPass)
+	assert.Nil(s.T(), err)
 
-		Context("with correct basic auth", func() {
-			It("should download a file", func() {
-				err := idempotentFileDownload(testServer.URL+"/"+testBasicAuthFilename, testBasicAuthFilename, testBasicAuthUser, testBasicAuthPass)
-				Expect(err).To(BeNil())
+	text, err := ioutil.ReadFile(testBasicAuthFilename)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), testBasicAuthText, text, "text should be equal")
+}
 
-				text, err := ioutil.ReadFile(testBasicAuthFilename)
-				Expect(err).To(BeNil())
-				Expect(text).To(Equal(testBasicAuthText))
-			})
-		})
-
-		Context("with incorrect basic auth", func() {
-			It("should return an error", func() {
-				err := idempotentFileDownload(testServer.URL+"/"+testBasicAuthFilename, testBasicAuthFilename, "nottherightuser", "nottherightpass")
-				Expect(err).ToNot(BeNil())
-			})
-		})
-	})
-})
+func (s *DownloadTestSuite) TestIdempotentDownloadBasicAuthFailure() {
+	err := idempotentFileDownload(s.testServer.URL+"/"+testBasicAuthFilename, testBasicAuthFilename, "nottherightuser", "nottherightpass")
+	assert.NotNil(s.T(), err)
+}
