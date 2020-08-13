@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"time"
 )
 
 var (
@@ -113,6 +114,9 @@ var _ = Describe("Download", func() {
 
 				modtime := finfo.ModTime()
 
+				// wait a few milliseconds
+				time.Sleep(50 * time.Millisecond)
+
 				// Idempotent Download
 				err = idempotentFileDownload(testServer.URL+"/"+testFilename, testFilename, "", "")
 				Expect(err).To(BeNil())
@@ -138,6 +142,9 @@ var _ = Describe("Download", func() {
 				Expect(err).To(BeNil())
 
 				modtime := finfo.ModTime()
+
+				// wait a few milliseconds
+				time.Sleep(50 * time.Millisecond)
 
 				// Idempotent Download
 				err = idempotentFileDownload(testServer.URL+"/"+testFilename, testFilename, "", "")
@@ -165,6 +172,9 @@ var _ = Describe("Download", func() {
 				Expect(err).To(BeNil())
 
 				modtime := finfo.ModTime()
+
+				// wait a few milliseconds
+				time.Sleep(50 * time.Millisecond)
 
 				// Idempotent Download
 				err = idempotentFileDownload(testServer.URL+"/"+testHashlessFilename, testHashlessFilename, "", "")
