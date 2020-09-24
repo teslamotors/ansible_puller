@@ -74,7 +74,7 @@ Config file should be in: `/etc/ansible-puller/config.json`, `$HOME/.ansible-pul
 | `venv-path`              | `"/root/.virtualenvs/ansible_puller"` | Path to where the virtualenv will be created                                            |          |
 | `venv-requirements-file` | `"requirements.txt"`                  | Path to the python requirements file to populate the virtual environment                |          |
 | `sleep`                  | `30`                                  | How often to trigger run events in minutes                                              |          |
-| `start-disabled`         | `false`                               | Whether or not to start wth Ansbile disabled (good for debugging)                       |          |
+| `start-disabled`         | `false`                               | Whether or not to start with Ansbile disabled (good for debugging)                      |          |
 | `debug`                  | `false`                               | Whether or not to start in debug mode                                                   |          |
 | `once`                   | `false`                               | Only run the configured playbook once and then stop                                     |          |
 
