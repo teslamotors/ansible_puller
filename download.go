@@ -39,7 +39,8 @@ func md5sum(path string) (string, error) {
 // If user and pass are both supplied, it will set basic auth
 func downloadFile(url, path, user, pass string) error {
 	outFile, err := os.Create(path)
-	if err != nil {
+
+	if err != nil {		
 		return err
 	}
 
@@ -64,6 +65,9 @@ func downloadFile(url, path, user, pass string) error {
 	_, err = io.Copy(outFile, resp.Body)
 	if err != nil {
 		return err
+	}
+	if err := outFile.Close(); err != nil {
+		logrus.Errorf("Failed to close file: %v", err)
 	}
 
 	return nil

@@ -15,3 +15,6 @@
 
 packrd
 ansible_puller
+
+# Eclipse project file
+.project

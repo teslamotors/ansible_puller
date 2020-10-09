@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 )
 
-// Ensures that a given file si gzip-encoded
+// Ensures that a given file is gzip-encoded
 func ensureGzip(file io.Reader) error {
 	buff := make([]byte, 512) // content-type length
 
