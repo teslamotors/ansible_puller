@@ -95,11 +95,17 @@ func (a AnsibleConfig) FindInventoryForHost() (string, string, error) {
 			logrus.Debugln("Ansible inventory output:", output)
 			return "", "", errors.Wrap(err, "unable to list hosts for "+item)
 		}
+
+		cleanOutput := trimMultilineWhiteSpace(output)
+
 		for _, target := range targets {
-			if strings.Contains(output, target) {
-				logrus.Debug("Found ", target, " in inventory ", inv)
-				return inv, target, nil
+			for _, line := range strings.Split(cleanOutput, "\n") {
+				if target == line {
+					logrus.Debug("Found ", target, " in inventory ", inv)
+					return inv, target, nil
+				}
 			}
+
 			logrus.Debug("Did not find ", target, " in inventory ", inv)
 		}
 	}
