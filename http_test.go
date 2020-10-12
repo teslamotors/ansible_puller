@@ -2,31 +2,27 @@ package main
 
 import (
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"os"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"testing"
 )
 
-var _ = Describe("Http", func() {
-	Describe("http server", func() {
-		Context("when functioning normally", func() {
-			It("should include an ip and the hostame at least", func() {
-				req, err := http.NewRequest("GET", "/ansible/status", nil)
-				Expect(err).ShouldNot(HaveOccurred())
+func TestStatusEndpoint(t *testing.T) {
+	req, err := http.NewRequest("GET", "/ansible/status", nil)
+	assert.Nil(t, err)
 
-				rr := httptest.NewRecorder()
+	rr := httptest.NewRecorder()
 
-				http.HandlerFunc(HandlerStatus).ServeHTTP(rr, req)
+	http.HandlerFunc(HandlerStatus).ServeHTTP(rr, req)
 
-				Expect(rr.Code).To(Equal(http.StatusOK), "Received bad status code %s", rr.Code)
+	assert.Equal(t, http.StatusOK, rr.Code, "Received bad status code %s", rr.Code)
 
-				host, err := os.Hostname()
-				Expect(err).ShouldNot(HaveOccurred())
+	host, err := os.Hostname()
+	assert.Nil(t, err)
 
-				expected := string(fmt.Sprintf(`
+	expected := string(fmt.Sprintf(`
 				{
 					"ansible_disabled": true,
 					"ansible_last_run_success": true,
@@ -35,8 +31,5 @@ var _ = Describe("Http", func() {
 					"hostname": "%s",
 					"version": ""
 				}`, host))
-				Expect(rr.Body).To(MatchJSON(expected))
-			})
-		})
-	})
-})
+	assert.JSONEq(t, expected, rr.Body.String())
+}

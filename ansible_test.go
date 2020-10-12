@@ -2,23 +2,30 @@ package main
 
 import (
 	"os"
+	"regexp"
+	"testing"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/assert"
 )
 
-var _ = Describe("Ansible", func() {
-	Describe("ansible inventory and execution", func() {
-		Context("when assembling a target list", func() {
-			It("should include an ip and the hostame at least", func() {
-				targets, targetErr := CreateAnsibleTargetsList()
-				hostname, hostnameErr := os.Hostname()
-				Expect(targetErr).To(BeNil())
-				Expect(hostnameErr).To(BeNil())
-				Expect(len(targets)).Should(BeNumerically(">=", 2))
-				Expect(targets).Should(ContainElement(ContainSubstring(hostname)))
-				Expect(targets).Should(ContainElement(MatchRegexp(`\d+\.\d+\.\d+.\d+`)))
-			})
-		})
-	})
-})
+func TestHostnameLookup(t *testing.T) {
+	targets, err := CreateAnsibleTargetsList()
+	assert.Nil(t, err)
+
+	hostname, err := os.Hostname()
+	assert.Nil(t, err)
+
+	assert.GreaterOrEqual(t, len(targets), 2, "should have at least hostname and ip, so 2")
+	assert.Contains(t, targets, hostname, "hostname should be in the list")
+
+	var found bool
+	for _, item := range targets {
+		matched, err := regexp.MatchString(`\d+\.\d+\.\d+.\d+`, item)
+		if err != nil {
+			continue
+		}
+
+		found = found || matched
+	}
+	assert.True(t, found, "one of the targets should be an ip address")
+}

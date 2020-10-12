@@ -40,7 +40,7 @@ func md5sum(path string) (string, error) {
 func downloadFile(url, path, user, pass string) error {
 	outFile, err := os.Create(path)
 
-	if err != nil {		
+	if err != nil {
 		return err
 	}
 
@@ -86,6 +86,7 @@ func downloadFile(url, path, user, pass string) error {
 // user is an http basic auth username
 // pass is an http basic auth password
 func idempotentFileDownload(url, path, user, pass string) error {
+	logrus.Debugf("Starting idempotent download of %s", url)
 	hashURL := url + ".md5"
 
 	currentFileExists := true
@@ -97,6 +98,8 @@ func idempotentFileDownload(url, path, user, pass string) error {
 	}
 
 	if currentFileExists {
+		logrus.Debug("File exists locally")
+
 		timeout := time.Duration(2 * time.Second)
 		client := http.Client{
 			Timeout: timeout,
@@ -110,14 +113,20 @@ func idempotentFileDownload(url, path, user, pass string) error {
 		if err != nil {
 			logrus.Debugf("MD5 sum not found at: %s", hashURL)
 		} else {
+			logrus.Debugf("Found MD5 sum at: %s", hashURL)
 			defer md5Resp.Body.Close()
 			remoteChecksum, err := ioutil.ReadAll(md5Resp.Body)
 			if err != nil {
+				logrus.Debug("Error reading remote checksum")
 				return err
 			}
 
+			logrus.Debugf("Local checksum:  %s", currentChecksum)
+			logrus.Debugf("Remote checksum: %s", remoteChecksum)
+
 			// Checksums match, so there's nothing to do here
 			if string(remoteChecksum) == currentChecksum {
+				logrus.Debug("Local and remote checksums match, skipping file download")
 				return nil
 			}
 		}

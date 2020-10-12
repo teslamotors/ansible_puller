@@ -1,60 +1,57 @@
 package main
 
 import (
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 	"io/ioutil"
 	"os"
+	"testing"
 )
 
-var _ = Describe("Unarchive", func() {
-	var tmpDir string
+// Register the below test suite
+func TestUnarchiveTestSuite(t *testing.T) {
+	suite.Run(t, new(UnarchiveTestSuite))
+}
 
-	BeforeEach(func() {
-		var err error
-		tmpDir, err = ioutil.TempDir("/tmp", "ansible_puller")
-		Expect(err).To(BeNil())
-	})
+type UnarchiveTestSuite struct {
+	suite.Suite
+	tmpDir string
+}
 
-	AfterEach(func() {
-		os.RemoveAll(tmpDir)
-	})
+func (s *UnarchiveTestSuite) SetupTest() {
+	var err error
+	s.tmpDir, err = ioutil.TempDir("/tmp", "ansible_puller")
+	assert.Nil(s.T(), err)
+}
 
-	Describe("unarchiving a tarball", func() {
-		Context("when the tarball exists", func() {
-			It("unarchives into the expected directory", func() {
-				err := extractTgz("testdata/good.tgz", tmpDir)
-				Expect(err).To(BeNil())
+func (s *UnarchiveTestSuite) TearDownTest() {
+	os.RemoveAll(s.tmpDir)
+}
 
-				stats, err := os.Stat(tmpDir + "/foo.txt")
-				Expect(err).To(BeNil())
-				Expect(stats.Mode().IsRegular()).To(BeTrue())
+func (s *UnarchiveTestSuite) TestTarballExists() {
+	err := extractTgz("testdata/good.tgz", s.tmpDir)
+	assert.Nil(s.T(), err)
 
-				stats, err = os.Stat(tmpDir + "/bar.txt")
-				Expect(err).To(BeNil())
-				Expect(stats.Mode().IsRegular()).To(BeTrue())
-			})
-		})
+	stats, err := os.Stat(s.tmpDir + "/foo.txt")
+	assert.Nil(s.T(), err)
+	assert.True(s.T(), stats.Mode().IsRegular(), "should create a regular foo file")
 
-		Context("when the tarball does not exist", func() {
-			It("fails with an error", func() {
-				err := extractTgz("testdata/somethingthatdoesnotexist.tgz", tmpDir)
-				Expect(err).ToNot(BeNil())
-			})
-		})
+	stats, err = os.Stat(s.tmpDir + "/bar.txt")
+	assert.Nil(s.T(), err)
+	assert.True(s.T(), stats.Mode().IsRegular(), "should create a regular bar file")
+}
 
-		Context("when the tarball is corrupted", func() {
-			It("fails with an error", func() {
-				err := extractTgz("testdata/corrupt.tgz", tmpDir)
-				Expect(err).ToNot(BeNil())
-			})
-		})
+func (s *UnarchiveTestSuite) TestTarballDoesNotExist() {
+	err := extractTgz("testdata/somethingthatdoesnotexist.tgz", s.tmpDir)
+	assert.NotNil(s.T(), err)
+}
 
-		Context("when the tarball has correct headers but invalid body", func() {
-			It("fails with an error", func() {
-				err := extractTgz("testdata/half.tgz", tmpDir)
-				Expect(err).ToNot(BeNil())
-			})
-		})
-	})
-})
+func (s *UnarchiveTestSuite) TestTarballIsCorrupted() {
+	err := extractTgz("testdata/corrupt.tgz", s.tmpDir)
+	assert.NotNil(s.T(), err)
+}
+
+func (s *UnarchiveTestSuite) TestTarballHasInvalidBody() {
+	err := extractTgz("testdata/half.tgz", s.tmpDir)
+	assert.NotNil(s.T(), err)
+}
