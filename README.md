@@ -1,7 +1,7 @@
 # ansible-puller
 
 This daemon extends the `ansible-pull` method of running Ansible.
-It uses HTTP file transmission instead of Git to manage distribution (easy to cache), and integrates with Prometheus monitoring.
+It uses S3 or HTTP file transmission instead of Git to manage distribution (easy to cache), and integrates with Prometheus monitoring.
 
 ## Why ansible-puller?
 
@@ -12,7 +12,7 @@ runs and a simple REST API to enable/disable the puller and trigger a run to giv
 
 # How to use it
 
-Ansible puller expects an HTTP endpoint with a tarball full of Ansible playbooks, inventories, etc.
+Ansible puller expects an HTTP endpoint, an S3 URI, or an S3 ARN that points to a tarball with Ansible playbooks, inventories, etc.
 
 The minimal configuration would just be a config file supplying `http-url` (see below).
 While the defaults have been set assuming [Ansible's "Alternative Directory Layout"](https://docs.ansible.com/ansible/latest/user_guide/playbooks_best_practices.html#alternative-directory-layout)
@@ -59,24 +59,26 @@ a part of `site.yml`'s run. Use the `debug` option to get more insight to the pr
 
 Config file should be in: `/etc/ansible-puller/config.json`, `$HOME/.ansible-puller.json`, `./ansible-puller.json`
 
-| Config Option            | Default                               | Description                                                                             | Required |
-|--------------------------|---------------------------------------|-----------------------------------------------------------------------------------------|----------|
-| `http-listen-string`     | `"0.0.0.0:31836"`                     | Address/port the service will listen on. Use `127.0.0.1:31386` to lock down the UI.     |          |
-| `http-proto`             | `https`                               | Modify to "http" if necessary                                                           |          |
-| `http-user`              | `""`                                  | Username for HTTP Basic Auth                                                            |          |
-| `http-pass`              | `""`                                  | Password for HTTP basic Auth                                                            |          |
-| `http-url`               | `""`                                  | HTTP Url to find the Ansible tarball                                                    | yes      |
-| `log-dir`                | `"/var/log/ansible-puller"`           | Log directory (must exist)                                                              |          |
-| `ansible-dir`            | `""`                                  | Path in the pulled tarball to cd into before ansible commands - usually ansible.cfg dir |          |
-| `ansible-playbook`       | `"site.yml"`                          | The playbook that will be run  - relative to ansible-dir                                |          |
-| `ansible-inventory`      | `[]`                                  | List of inventories to operate on - relative to ansible-dir                             |          |
-| `venv-python`            | `"/usr/bin/python3"`                  | Path to the python version you are using for Ansible                                    |          |
-| `venv-path`              | `"/root/.virtualenvs/ansible_puller"` | Path to where the virtualenv will be created                                            |          |
-| `venv-requirements-file` | `"requirements.txt"`                  | Path to the python requirements file to populate the virtual environment                |          |
-| `sleep`                  | `30`                                  | How often to trigger run events in minutes                                              |          |
-| `start-disabled`         | `false`                               | Whether or not to start with Ansbile disabled (good for debugging)                      |          |
-| `debug`                  | `false`                               | Whether or not to start in debug mode                                                   |          |
-| `once`                   | `false`                               | Only run the configured playbook once and then stop                                     |          |
+| Config Option            | Default                               | Description                                                                             |
+|--------------------------|---------------------------------------|-----------------------------------------------------------------------------------------|
+| `http-listen-string`     | `"0.0.0.0:31836"`                     | Address/port the service will listen on. Use `127.0.0.1:31386` to lock down the UI.     |
+| `http-proto`             | `https`                               | Modify to "http" if necessary                                                           |
+| `http-user`              | `""`                                  | Username for HTTP Basic Auth                                                            |
+| `http-pass`              | `""`                                  | Password for HTTP basic Auth                                                            |
+| `http-url`               | `""`                                  | HTTP Url to find the Ansible tarball                                                    |
+| `log-dir`                | `"/var/log/ansible-puller"`           | Log directory (must exist)                                                              |
+| `ansible-dir`            | `""`                                  | Path in the pulled tarball to cd into before ansible commands - usually ansible.cfg dir |
+| `ansible-playbook`       | `"site.yml"`                          | The playbook that will be run  - relative to ansible-dir                                |
+| `ansible-inventory`      | `[]`                                  | List of inventories to operate on - relative to ansible-dir                             |
+| `venv-python`            | `"/usr/bin/python3"`                  | Path to the python version you are using for Ansible                                    |
+| `venv-path`              | `"/root/.virtualenvs/ansible_puller"` | Path to where the virtualenv will be created                                            |
+| `venv-requirements-file` | `"requirements.txt"`                  | Path to the python requirements file to populate the virtual environment                |
+| `sleep`                  | `30`                                  | How often to trigger run events in minutes                                              |
+| `start-disabled`         | `false`                               | Whether or not to start with Ansbile disabled (good for debugging)                      |
+| `s3-uri`                 | `""`                                  | S3 URI to find the Ansible tarball                                                      |
+| `s3-arn`                 | `""`                                  | S3 ARN to find the Ansible tarball                                                      |
+| `debug`                  | `false`                               | Whether or not to start in debug mode                                                   |
+| `once`                   | `false`                               | Only run the configured playbook once and then stop                                     |
 
 ### Monitoring with prometheus
 
