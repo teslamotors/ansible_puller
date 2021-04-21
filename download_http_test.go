@@ -27,16 +27,16 @@ var (
 )
 
 // Register the below test suite
-func TestDownloadTestSuite(t *testing.T) {
-	suite.Run(t, new(DownloadTestSuite))
+func TestDownloadHTTPTestSuite(t *testing.T) {
+	suite.Run(t, new(DownloadHTTPTestSuite))
 }
 
-type DownloadTestSuite struct {
+type DownloadHTTPTestSuite struct {
 	suite.Suite
 	testServer *httptest.Server
 }
 
-func (s *DownloadTestSuite) SetupTest() {
+func (s *DownloadHTTPTestSuite) SetupTest() {
 	s.testServer = httptest.NewServer(
 		http.HandlerFunc(
 			func(rw http.ResponseWriter, req *http.Request) {
@@ -63,14 +63,14 @@ func (s *DownloadTestSuite) SetupTest() {
 			}))
 }
 
-func (s *DownloadTestSuite) TearDownTest() {
+func (s *DownloadHTTPTestSuite) TearDownTest() {
 	s.testServer.Close()
 	os.RemoveAll(testFilename)
 	os.RemoveAll(testHashlessFilename)
 	os.RemoveAll(testBasicAuthFilename)
 }
 
-func (s *DownloadTestSuite) TestMD5Sum() {
+func (s *DownloadHTTPTestSuite) TestMD5Sum() {
 	err := ioutil.WriteFile(testFilename, testText, 0644)
 	assert.Nil(s.T(), err)
 
@@ -79,7 +79,7 @@ func (s *DownloadTestSuite) TestMD5Sum() {
 	assert.Equal(s.T(), sum, testMD5)
 }
 
-func (s *DownloadTestSuite) TestDownloadFile() {
+func (s *DownloadHTTPTestSuite) TestDownloadFile() {
 	err := downloadFile(s.testServer.URL+"/"+testFilename, testFilename, "", "")
 	assert.Nil(s.T(), err)
 
@@ -88,7 +88,7 @@ func (s *DownloadTestSuite) TestDownloadFile() {
 	assert.Equal(s.T(), text, testText)
 }
 
-func (s *DownloadTestSuite) TestIdempotentDownloadWhenNoFileExists() {
+func (s *DownloadHTTPTestSuite) TestIdempotentDownloadWhenNoFileExists() {
 	err := idempotentFileDownload(s.testServer.URL+"/"+testFilename, testFilename, "", "")
 	assert.Nil(s.T(), err)
 
@@ -97,7 +97,7 @@ func (s *DownloadTestSuite) TestIdempotentDownloadWhenNoFileExists() {
 	assert.Equal(s.T(), text, testText)
 }
 
-func (s *DownloadTestSuite) TestIdempotentDownloadWhenCurrentFileExists() {
+func (s *DownloadHTTPTestSuite) TestIdempotentDownloadWhenCurrentFileExists() {
 	err := idempotentFileDownload(s.testServer.URL+"/"+testFilename, testFilename, "", "")
 	assert.Nil(s.T(), err)
 
@@ -122,7 +122,7 @@ func (s *DownloadTestSuite) TestIdempotentDownloadWhenCurrentFileExists() {
 	assert.Equal(s.T(), modtime, newModtime, "modification time should not change")
 }
 
-func (s *DownloadTestSuite) TestIdempotentDownloadWhenOldFileExists() {
+func (s *DownloadHTTPTestSuite) TestIdempotentDownloadWhenOldFileExists() {
 	err := idempotentFileDownload(s.testServer.URL+"/something-else", testFilename, "", "")
 	assert.Nil(s.T(), err)
 
@@ -149,7 +149,7 @@ func (s *DownloadTestSuite) TestIdempotentDownloadWhenOldFileExists() {
 	assert.NotEqual(s.T(), modtime, newModtime, "modification time should change")
 }
 
-func (s *DownloadTestSuite) TestIdempotentDownloadNoRemoteHash() {
+func (s *DownloadHTTPTestSuite) TestIdempotentDownloadNoRemoteHash() {
 	err := idempotentFileDownload(s.testServer.URL+"/"+testHashlessFilename, testHashlessFilename, "", "")
 	assert.Nil(s.T(), err)
 
@@ -177,7 +177,7 @@ func (s *DownloadTestSuite) TestIdempotentDownloadNoRemoteHash() {
 	assert.NotEqual(s.T(), modtime, newModtime, "new file should be downloaded")
 }
 
-func (s *DownloadTestSuite) TestIdempotentDownloadBasicAuth() {
+func (s *DownloadHTTPTestSuite) TestIdempotentDownloadBasicAuth() {
 	err := idempotentFileDownload(s.testServer.URL+"/"+testBasicAuthFilename, testBasicAuthFilename, testBasicAuthUser, testBasicAuthPass)
 	assert.Nil(s.T(), err)
 
@@ -186,7 +186,7 @@ func (s *DownloadTestSuite) TestIdempotentDownloadBasicAuth() {
 	assert.Equal(s.T(), testBasicAuthText, text, "text should be equal")
 }
 
-func (s *DownloadTestSuite) TestIdempotentDownloadBasicAuthFailure() {
+func (s *DownloadHTTPTestSuite) TestIdempotentDownloadBasicAuthFailure() {
 	err := idempotentFileDownload(s.testServer.URL+"/"+testBasicAuthFilename, testBasicAuthFilename, "nottherightuser", "nottherightpass")
 	assert.NotNil(s.T(), err)
 }

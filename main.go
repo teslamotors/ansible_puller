@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -81,7 +82,10 @@ func init() {
 	pflag.String("http-proto", "https", "Set to 'http' if necessary")
 	pflag.String("http-user", "", "HTTP username for pulling the remote file")
 	pflag.String("http-pass", "", "HTTP password for pulling the remote file")
+
 	pflag.String("http-url", "", "Remote endpoint to retrieve the file from")
+	pflag.String("s3-uri", "", "Remote endpoint in S3 to retrieve the file from if s3-arn isn't used")
+	pflag.String("s3-arn", "", "Remote endpoint in S3 to retrieve the file from if s3-uri isn't used")
 
 	pflag.String("log-dir", "/var/log/"+appName, "Logging directory")
 	pflag.StringSlice("ansible-inventory", []string{}, "List of ansible inventories to look in, comma-separated, relative to ansible-dir")
@@ -140,16 +144,53 @@ func ansibleEnable() {
 	logrus.Infoln("Enabled Ansible-Puller")
 }
 
-func getAnsibleRepository(runDir string) error {
-	remoteURL := fmt.Sprintf("%s://%s", viper.GetString("http-proto"), viper.GetString("http-url"))
-	localCacheFile := fmt.Sprintf("/tmp/%s.tgz", appName)
-
-	err := idempotentFileDownload(remoteURL, localCacheFile, viper.GetString("http-user"), viper.GetString("http-pass"))
-	if err != nil {
-		return errors.Wrap(err, "unable to pull Ansible repo")
+func getAnsibleRepository(context context.Context, runDir string) error {
+	httpURL := viper.GetString("http-url")
+	s3URI := viper.GetString("s3-uri")
+	s3ARN := viper.GetString("s3-arn")
+	nonEmptyResourceParameters := 0
+	for _, resource := range []string{httpURL, s3URI, s3ARN} {
+		if resource != "" {
+			nonEmptyResourceParameters++
+		}
+	}
+	if nonEmptyResourceParameters != 1 {
+		return errors.New("exactly one remote resource must be specified. Choose one 'http-url', 's3-uri', or 's3-arn'")
 	}
 
-	err = extractTgz(localCacheFile, runDir)
+	localCacheFile := fmt.Sprintf("/tmp/%s.tgz", appName)
+
+	if httpURL != "" {
+		remoteHTTPURL := fmt.Sprintf("%s://%s", viper.GetString("http-proto"), httpURL)
+		err := idempotentFileDownload(remoteHTTPURL, localCacheFile, viper.GetString("http-user"), viper.GetString("http-pass"))
+		if err != nil {
+			return errors.Wrap(err, "unable to pull Ansible repo")
+		}
+	}
+
+	if s3URI != "" {
+		bucketObject, err := parseS3ResourceFromURI(s3URI)
+		if err != nil {
+			return err
+		}
+		err = downloadS3File(context, bucketObject, localCacheFile)
+		if err != nil {
+			return errors.Wrap(err, "unable to pull S3 bucket") 
+		}
+	}
+
+	if s3ARN != "" {
+		bucketObject, err := parseS3ResourceFromARN(s3ARN)
+		if err != nil {
+			return err
+		}
+		err = downloadS3File(context, bucketObject, localCacheFile)
+		if err != nil {
+			return errors.Wrap(err, "unable to pull S3 bucket") 
+		}
+	}
+
+	err := extractTgz(localCacheFile, runDir)
 	if err != nil {
 		return errors.Wrap(err, "unable to extract tgz")
 	}
@@ -158,7 +199,7 @@ func getAnsibleRepository(runDir string) error {
 }
 
 // Core run logic
-func ansibleRun() error {
+func ansibleRun(context context.Context) error {
 	if ansibleDisabled {
 		logrus.Infoln("Tried to run Ansible, but currently disabled. Skipping.")
 		return nil
@@ -186,7 +227,7 @@ func ansibleRun() error {
 	}
 
 	runLogger.Infoln("Pulling remote repository")
-	if err = getAnsibleRepository(runDir); err != nil {
+	if err = getAnsibleRepository(context, runDir); err != nil {
 		runLogger.Errorln("Unable to pull ansible repository: ", err)
 		return err
 	}
@@ -255,8 +296,10 @@ func ansibleRun() error {
 }
 
 func main() {
+	context := context.Background()
+
 	if viper.GetBool("once") {
-		if err := ansibleRun(); err != nil {
+		if err := ansibleRun(context); err != nil {
 			logrus.Fatalln("Ansible run failed due to: " + err.Error())
 		}
 
@@ -285,7 +328,7 @@ func main() {
 			<-runChan
 
 			start := time.Now()
-			err := ansibleRun()
+			err := ansibleRun(context)
 			elapsed := time.Since(start)
 
 			promAnsibleRunTime.Set(elapsed.Seconds())
