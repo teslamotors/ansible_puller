@@ -4,6 +4,7 @@ require (
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/gobuffalo/packr/v2 v2.8.0
 	github.com/gorilla/mux v1.7.4
+	github.com/hashicorp/go-getter v1.5.3
 	github.com/karrick/godirwalk v1.15.6 // indirect
 	github.com/mitchellh/mapstructure v1.3.2 // indirect
 	github.com/pelletier/go-toml v1.8.0 // indirect
