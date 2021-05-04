@@ -81,7 +81,9 @@ func init() {
 	pflag.String("http-proto", "https", "Set to 'http' if necessary")
 	pflag.String("http-user", "", "HTTP username for pulling the remote file")
 	pflag.String("http-pass", "", "HTTP password for pulling the remote file")
+
 	pflag.String("http-url", "", "Remote endpoint to retrieve the file from")
+	pflag.String("s3-obj", "", "Remote endpoint in S3 to retrieve the file from")
 
 	pflag.String("log-dir", "/var/log/"+appName, "Logging directory")
 	pflag.StringSlice("ansible-inventory", []string{}, "List of ansible inventories to look in, comma-separated, relative to ansible-dir")
@@ -141,10 +143,25 @@ func ansibleEnable() {
 }
 
 func getAnsibleRepository(runDir string) error {
-	remoteURL := fmt.Sprintf("%s://%s", viper.GetString("http-proto"), viper.GetString("http-url"))
+	httpURL := viper.GetString("http-url")
+	s3Obj := viper.GetString("s3-obj")
 	localCacheFile := fmt.Sprintf("/tmp/%s.tgz", appName)
+	var err error
 
-	err := idempotentFileDownload(remoteURL, localCacheFile, viper.GetString("http-user"), viper.GetString("http-pass"))
+	// Exactly one variable is defined
+	if (httpURL == "") == (s3Obj == "") {
+		return errors.New("exactly one remote resource must be specified. Choose one 'http-url' or 's3-obj'")
+	} else if httpURL != "" {
+		remoteHttpURL := fmt.Sprintf("%s://%s", viper.GetString("http-proto"), httpURL)
+		downloader := httpDownloader{
+			username: viper.GetString("http-user"),
+			password: viper.GetString("http-pass"),
+		}
+		err = idempotentFileDownload(downloader, remoteHttpURL, localCacheFile)
+	} else if s3Obj != "" {
+		downloader := goGetterDownloader{}
+		err = idempotentFileDownload(downloader, s3Obj, localCacheFile)
+	}
 	if err != nil {
 		return errors.Wrap(err, "unable to pull Ansible repo")
 	}

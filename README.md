@@ -1,7 +1,7 @@
 # ansible-puller
 
 This daemon extends the `ansible-pull` method of running Ansible.
-It uses HTTP file transmission instead of Git to manage distribution (easy to cache), and integrates with Prometheus monitoring.
+It uses S3 or HTTP file transmission instead of Git to manage distribution (easy to cache), and integrates with Prometheus monitoring.
 
 ## Why ansible-puller?
 
@@ -12,7 +12,7 @@ runs and a simple REST API to enable/disable the puller and trigger a run to giv
 
 # How to use it
 
-Ansible puller expects an HTTP endpoint with a tarball full of Ansible playbooks, inventories, etc.
+Ansible puller expects an HTTP endpoint, or an S3 path that points to a tarball with Ansible playbooks, inventories, etc.
 
 The minimal configuration would just be a config file supplying `http-url` (see below).
 While the defaults have been set assuming [Ansible's "Alternative Directory Layout"](https://docs.ansible.com/ansible/latest/user_guide/playbooks_best_practices.html#alternative-directory-layout)
@@ -59,24 +59,27 @@ a part of `site.yml`'s run. Use the `debug` option to get more insight to the pr
 
 Config file should be in: `/etc/ansible-puller/config.json`, `$HOME/.ansible-puller.json`, `./ansible-puller.json`
 
-| Config Option            | Default                               | Description                                                                             | Required |
-|--------------------------|---------------------------------------|-----------------------------------------------------------------------------------------|----------|
-| `http-listen-string`     | `"0.0.0.0:31836"`                     | Address/port the service will listen on. Use `127.0.0.1:31386` to lock down the UI.     |          |
-| `http-proto`             | `https`                               | Modify to "http" if necessary                                                           |          |
-| `http-user`              | `""`                                  | Username for HTTP Basic Auth                                                            |          |
-| `http-pass`              | `""`                                  | Password for HTTP basic Auth                                                            |          |
-| `http-url`               | `""`                                  | HTTP Url to find the Ansible tarball                                                    | yes      |
-| `log-dir`                | `"/var/log/ansible-puller"`           | Log directory (must exist)                                                              |          |
-| `ansible-dir`            | `""`                                  | Path in the pulled tarball to cd into before ansible commands - usually ansible.cfg dir |          |
-| `ansible-playbook`       | `"site.yml"`                          | The playbook that will be run  - relative to ansible-dir                                |          |
-| `ansible-inventory`      | `[]`                                  | List of inventories to operate on - relative to ansible-dir                             |          |
-| `venv-python`            | `"/usr/bin/python3"`                  | Path to the python version you are using for Ansible                                    |          |
-| `venv-path`              | `"/root/.virtualenvs/ansible_puller"` | Path to where the virtualenv will be created                                            |          |
-| `venv-requirements-file` | `"requirements.txt"`                  | Path to the python requirements file to populate the virtual environment                |          |
-| `sleep`                  | `30`                                  | How often to trigger run events in minutes                                              |          |
-| `start-disabled`         | `false`                               | Whether or not to start with Ansbile disabled (good for debugging)                      |          |
-| `debug`                  | `false`                               | Whether or not to start in debug mode                                                   |          |
-| `once`                   | `false`                               | Only run the configured playbook once and then stop                                     |          |
+| Config Option            | Default                               | Description                                                                             |
+|--------------------------|---------------------------------------|-----------------------------------------------------------------------------------------|
+| `http-listen-string`     | `"0.0.0.0:31836"`                     | Address/port the service will listen on. Use `127.0.0.1:31386` to lock down the UI.     |
+| `http-proto`             | `https`                               | Modify to "http" if necessary                                                           |
+| `http-user`              | `""`                                  | Username for HTTP Basic Auth                                                            |
+| `http-pass`              | `""`                                  | Password for HTTP basic Auth                                                            |
+| `http-url`               | `""`                                  | HTTP Url to find the Ansible tarball. Required if s3-obj is not set                     |
+| `log-dir`                | `"/var/log/ansible-puller"`           | Log directory (must exist)                                                              |
+| `ansible-dir`            | `""`                                  | Path in the pulled tarball to cd into before ansible commands - usually ansible.cfg dir |
+| `ansible-playbook`       | `"site.yml"`                          | The playbook that will be run  - relative to ansible-dir                                |
+| `ansible-inventory`      | `[]`                                  | List of inventories to operate on - relative to ansible-dir                             |
+| `venv-python`            | `"/usr/bin/python3"`                  | Path to the python version you are using for Ansible                                    |
+| `venv-path`              | `"/root/.virtualenvs/ansible_puller"` | Path to where the virtualenv will be created                                            |
+| `venv-requirements-file` | `"requirements.txt"`                  | Path to the python requirements file to populate the virtual environment                |
+| `sleep`                  | `30`                                  | How often to trigger run events in minutes                                              |
+| `start-disabled`         | `false`                               | Whether or not to start with Ansbile disabled (good for debugging)                      |
+| `s3-obj`                 | `""`                                  | S3 location to find the Ansible tarball. Required if http-url is not set (1)            |
+| `debug`                  | `false`                               | Whether or not to start in debug mode                                                   |
+| `once`                   | `false`                               | Only run the configured playbook once and then stop                                     |
+
+(1) When using S3 locations they should match the permitted formats in [go-getter](https://github.com/hashicorp/go-getter/blob/98dc30cfd352e814bcffb8f2a826ae102456f0a3/get_s3.go#L219)
 
 ### Monitoring with prometheus
 
@@ -93,6 +96,22 @@ It currently produces the number of tasks that are ok, skipped, changed, failed,
 | `ansible_puller_running`          | Whether or not the puller is currently running               |
 | `ansible_puller_runs`             | How many times the puller has run                            |
 | `ansible_puller_version`          | Version (git sha) of the puller                              |
+
+### MD5 checksum support
+
+Enabling MD5 checksumming will prevent extraneous calls to download the ansible tarball from the
+remote.
+
+By design, ansible_puller will look at the remote path `<resource_path>.md5` to discover the live
+MD5 checksum. If, for example, your resource is located at `https://example.com/some/file.tgz` then
+ansible_puller will look for the MD5 hash at `https://example.com/some/file.tgz.md5`. The following
+conditions will lead to a (re-)download of the ansible tarball:
+- There is no current ansible tarball at the specified local path
+- The current hash of the local ansible tarball not match the remote checksum
+- The remote checksum does not exist
+
+If a remote checksum exists then the downloaded tarball will be hashed and the resulting output will
+be compared to the remote checksum to validate artifact integrity.
 
 ## Runtime Dependencies
 
