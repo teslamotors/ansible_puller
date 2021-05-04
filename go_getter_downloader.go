@@ -31,9 +31,9 @@ func (downloader goGetterDownloader) RemoteChecksum(remotePath string) (string, 
 	defer os.RemoveAll(dir)
 	hashFile := filepath.Join(dir, "md5Hash")
 
-	err = getter.GetFile(hashRemotePath, hashFile)
+	err = getter.GetFile(hashFile, hashRemotePath)
 	if err != nil {
-		logrus.Debugf("MD5 sum not reachable at: %s", hashRemotePath)
+		logrus.Infof("MD5 sum not reachable. %v", err)
 		return "", nil
 	}
 
