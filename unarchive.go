@@ -7,6 +7,7 @@ import (
 	"compress/gzip"
 	"fmt"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 	"os"
@@ -31,6 +32,7 @@ func ensureGzip(file io.Reader) error {
 
 // Extract a tarball from the src into dest
 func extractTgz(src, dest string) error {
+	logrus.Debugf("Expanding %s to %s", src, dest)
 	tgzFile, err := os.Open(src)
 	if err != nil {
 		return errors.Wrap(err, "unable to open source file")

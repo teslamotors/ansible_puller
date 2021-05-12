@@ -116,7 +116,7 @@ func (downloader s3Downloader) RemoteChecksum(remotePath string) (string, error)
 	defer os.RemoveAll(dir)
 	hashFile := filepath.Join(dir, "md5Hash")
 
-	err = downloader.Download(hashFile, hashRemotePath)
+	err = downloader.Download(hashRemotePath, hashFile)
 	if err != nil {
 		logrus.Infof("MD5 sum not reachable. %v", err)
 		return "", nil
