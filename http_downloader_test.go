@@ -13,6 +13,14 @@ import (
 )
 
 var (
+	testFilename     = "testfile.txt"
+	testText         = []byte("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer ac condimentum velit, a hendrerit felis.")
+	testFilenameHash = "testfile.txt.md5"
+	testMD5          = "7b20fda6af27c1b59ebdd8c09a93e770"
+
+	testHashlessFilename = "nohash.txt"
+	testHashlessText     = []byte("Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.")
+
 	testBasicAuthChecksum     = []byte("bb651e9638be48e76bbbe936b9651083")
 	testBasicAuthFilename     = "basicauth.txt"
 	testBasicAuthFilenameHash = "basicauth.txt.md5"

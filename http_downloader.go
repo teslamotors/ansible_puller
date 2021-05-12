@@ -56,25 +56,6 @@ func (downloader httpDownloader) Download(remotePath, outputPath string) error {
 	return nil
 }
 
-func (downloader httpDownloader) DownloadAndValidateChecksum(remotePath, outputPath, checksum string) error {
-	err := downloader.Download(remotePath, outputPath)
-	if err != nil {
-		return err
-	}
-
-	newChecksum, err := md5sum(outputPath)
-	if err != nil {
-		return err
-	}
-
-	if newChecksum != checksum {
-		logrus.Debugf("Checksums for downloaded file do not match: '%s' != '%s'", newChecksum, checksum)
-		return errors.New("checksum does not match expected value")
-	}
-
-	return nil
-}
-
 func (downloader httpDownloader) RemoteChecksum(remotePath string) (string, error) {
 	hashRemotePath := fmt.Sprintf("%s.md5", remotePath)
 

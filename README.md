@@ -12,7 +12,7 @@ runs and a simple REST API to enable/disable the puller and trigger a run to giv
 
 # How to use it
 
-Ansible puller expects an HTTP endpoint, or an S3 path that points to a tarball with Ansible playbooks, inventories, etc.
+Ansible puller expects an HTTP endpoint, or an S3 ARN that points to a tarball with Ansible playbooks, inventories, etc.
 
 The minimal configuration would just be a config file supplying `http-url` (see below).
 While the defaults have been set assuming [Ansible's "Alternative Directory Layout"](https://docs.ansible.com/ansible/latest/user_guide/playbooks_best_practices.html#alternative-directory-layout)
@@ -65,7 +65,7 @@ Config file should be in: `/etc/ansible-puller/config.json`, `$HOME/.ansible-pul
 | `http-proto`             | `https`                               | Modify to "http" if necessary                                                           |
 | `http-user`              | `""`                                  | Username for HTTP Basic Auth                                                            |
 | `http-pass`              | `""`                                  | Password for HTTP basic Auth                                                            |
-| `http-url`               | `""`                                  | HTTP Url to find the Ansible tarball. Required if s3-obj is not set                     |
+| `http-url`               | `""`                                  | HTTP Url to find the Ansible tarball. Required if s3-arn is not set                     |
 | `log-dir`                | `"/var/log/ansible-puller"`           | Log directory (must exist)                                                              |
 | `ansible-dir`            | `""`                                  | Path in the pulled tarball to cd into before ansible commands - usually ansible.cfg dir |
 | `ansible-playbook`       | `"site.yml"`                          | The playbook that will be run  - relative to ansible-dir                                |
@@ -75,11 +75,10 @@ Config file should be in: `/etc/ansible-puller/config.json`, `$HOME/.ansible-pul
 | `venv-requirements-file` | `"requirements.txt"`                  | Path to the python requirements file to populate the virtual environment                |
 | `sleep`                  | `30`                                  | How often to trigger run events in minutes                                              |
 | `start-disabled`         | `false`                               | Whether or not to start with Ansbile disabled (good for debugging)                      |
-| `s3-obj`                 | `""`                                  | S3 location to find the Ansible tarball. Required if http-url is not set (1)            |
+| `s3-arn`                 | `""`                                  | S3 location to find the Ansible tarball. Required if http-url is not set                |
+| `s3-conn-region`         | `""`                                  | S3 connection region to use. Uses the aws-sdk-go-v2 default providers if not set        |
 | `debug`                  | `false`                               | Whether or not to start in debug mode                                                   |
 | `once`                   | `false`                               | Only run the configured playbook once and then stop                                     |
-
-(1) When using S3 locations they should match the permitted formats in [go-getter](https://github.com/hashicorp/go-getter/blob/98dc30cfd352e814bcffb8f2a826ae102456f0a3/get_s3.go#L219)
 
 ### Monitoring with prometheus
 

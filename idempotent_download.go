@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"errors"
 	"github.com/sirupsen/logrus"
 	"io"
 	"os"
@@ -11,7 +12,6 @@ import (
 // Interface with logic to govern how to actually pull objects
 type downloader interface {
 	Download(remotePath, outputPath string) error
-	DownloadAndValidateChecksum(remotePath, outputPath, checksum string) error
 	RemoteChecksum(remotePath string) (string, error)
 }
 
@@ -33,6 +33,20 @@ func md5sum(path string) (string, error) {
 	return hex.EncodeToString(byteHash), nil
 }
 
+func validateMd5Sum(path, checksum string) error {
+	newChecksum, err := md5sum(path)
+	if err != nil {
+		return err
+	}
+
+	if newChecksum != checksum {
+		logrus.Debugf("Checksums for downloaded file do not match: '%s' != '%s'", newChecksum, checksum)
+		return errors.New("checksum does not match expected value")
+	}
+
+	return nil
+}
+
 // Downloads a file from a given url to a local filepath
 // Checks the md5sum of the file to see if the remote file should be downloaded
 //
@@ -43,7 +57,7 @@ func idempotentFileDownload(downloader downloader, remotePath, localPath string)
 
 	currentChecksum, err := md5sum(localPath)
 	if os.IsNotExist(err) {
-		logrus.Warnf("File '%s' does not exist yet so cannot validate for new checksum", localPath)
+		logrus.Infof("File '%s' does not exist yet so cannot validate for new checksum", localPath)
 		currentChecksum = ""
 	} else if err != nil {
 		return err
@@ -63,11 +77,20 @@ func idempotentFileDownload(downloader downloader, remotePath, localPath string)
 		}
 	}
 
-	if remoteChecksum != "" {
-		logrus.Debugf("Downloading file and validating checksum: %s", remotePath)
-		return downloader.DownloadAndValidateChecksum(remotePath, localPath, remoteChecksum)
+	logrus.Infof("Downloading file: %s", remotePath)
+	err = downloader.Download(remotePath, localPath)
+	if err != nil {
+		return err
 	}
 
-	logrus.Debugf("Downloading file: %s", remotePath)
-	return downloader.Download(remotePath, localPath)
+	if remoteChecksum != "" {
+		logrus.Infof("Validating checksum: %s", remotePath)
+
+		err = validateMd5Sum(localPath, remoteChecksum)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
