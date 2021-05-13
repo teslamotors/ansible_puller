@@ -53,7 +53,7 @@ func validateMd5Sum(path, checksum string) error {
 // The MD5 checking may be an Artifactory-specific setup because it will look for the hash at "${url}.md5"
 // If the MD5 is not found, this will download the file
 func idempotentFileDownload(downloader downloader, remotePath, localPath string) error {
-	logrus.Debugf("Starting idempotent download of %s", remotePath)
+	logrus.Debugf("Starting idempotent download of %s to %s", remotePath, localPath)
 
 	currentChecksum, err := md5sum(localPath)
 	if os.IsNotExist(err) {
