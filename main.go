@@ -161,8 +161,8 @@ func getAnsibleRepository(runDir string) error {
 		}
 		err = idempotentFileDownload(downloader, remoteHttpURL, localCacheFile)
 	} else if s3Obj != "" {
-		downloader, err := createS3Downloader(s3ConnectionRegion)
-		if err != nil {
+		downloader, createError := createS3Downloader(s3ConnectionRegion)
+		if createError != nil {
 			return errors.Wrap(err, "unable to pull Ansible repo")
 		}
 		err = idempotentFileDownload(downloader, s3Obj, localCacheFile)
