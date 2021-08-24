@@ -71,6 +71,7 @@ func (downloader httpDownloader) RemoteChecksum(remotePath string) (string, erro
 	resp, err := client.Do(req)
 	if err != nil {
 		logrus.Debugf("MD5 sum not found at: %s", hashRemotePath)
+		return "", nil
 	}
 
 	logrus.Debugf("Found MD5 sum at: %s", hashRemotePath)
