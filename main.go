@@ -254,11 +254,11 @@ func ansibleRun() error {
 		promAnsibleLastSuccess.Set(float64(time.Now().Unix()))
 	}
 
-	promAnsibleSummary.WithLabelValues("ok").Set(float64(runOutput.Stats[hostname].Ok))
-	promAnsibleSummary.WithLabelValues("skipped").Set(float64(runOutput.Stats[hostname].Skipped))
-	promAnsibleSummary.WithLabelValues("changed").Set(float64(runOutput.Stats[hostname].Changed))
-	promAnsibleSummary.WithLabelValues("failures").Set(float64(runOutput.Stats[hostname].Failures))
-	promAnsibleSummary.WithLabelValues("unreachable").Set(float64(runOutput.Stats[hostname].Unreachable))
+	promAnsibleSummary.WithLabelValues("ok").Set(float64(runOutput.Stats[target].Ok))
+	promAnsibleSummary.WithLabelValues("skipped").Set(float64(runOutput.Stats[target].Skipped))
+	promAnsibleSummary.WithLabelValues("changed").Set(float64(runOutput.Stats[target].Changed))
+	promAnsibleSummary.WithLabelValues("failures").Set(float64(runOutput.Stats[target].Failures))
+	promAnsibleSummary.WithLabelValues("unreachable").Set(float64(runOutput.Stats[target].Unreachable))
 
 	runLogger.Infoln("Writing ansible output to logfile")
 

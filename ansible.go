@@ -5,13 +5,14 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 	"net"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 )
 
 // AnsibleConfig is a collection of meta-information about an Ansible repository.
@@ -178,24 +179,22 @@ func (a AnsiblePlaybookRunner) Run() (AnsibleRunOutput, error) {
 		vCmd.StreamOutput = true
 	}
 
-	stdout, stderr, err := vCmd.Run()
-	if err != nil {
-		return AnsibleRunOutput{}, errors.Wrap(err, "ansible run failed")
-	}
+	stdout, stderr, runErr := vCmd.Run()
 
 	var ansibleOutput AnsibleRunOutput
-	if viper.GetBool("debug") {
-		return ansibleOutput, nil
-	}
-
-	err = json.Unmarshal([]byte(stdout), &ansibleOutput)
-	if err != nil {
-		logrus.Debug("Ansible stdout:\n", stdout, "Ansible stderr:\n", stderr)
-		return AnsibleRunOutput{}, errors.Wrap(err, "unable to parse ansible JSON stdout")
-	}
-
 	ansibleOutput.Stdout = stdout
 	ansibleOutput.Stderr = stderr
+
+	jsonErr := json.Unmarshal([]byte(stdout), &ansibleOutput)
+	if runErr != nil && jsonErr != nil {
+		logrus.Debug("Could not parse JSON from run. Ansible stdout:\n", stdout, "Ansible stderr:\n", stderr)
+	}
+	if runErr != nil {
+		return ansibleOutput, errors.Wrap(runErr, "ansible run failed")
+	}
+	if jsonErr != nil {
+		return ansibleOutput, errors.Wrap(jsonErr, "unable to parse ansible JSON stdout")
+	}
 
 	return ansibleOutput, nil
 }
