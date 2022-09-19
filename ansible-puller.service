@@ -1,0 +1,13 @@
+[Unit]
+Description=Ansible puller
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/opt/ansible-puller/ansible-puller
+StartLimitInterval=0
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

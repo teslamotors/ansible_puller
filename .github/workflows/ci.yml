@@ -5,11 +5,12 @@ jobs:
     name: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/setup-go@v2
+      - uses: actions/checkout@v3
+      - uses: bazelbuild/setup-bazelisk@v2
+      - name: Mount bazel cache
+        uses: actions/cache@v3
         with:
-          go-version: 1.14
-
-      - uses: actions/checkout@v2
-
-      - name: Test
-        run: go test ./...
+          path: "~/.cache/bazel"
+          key: ${{ runner.os }}-bazel-cache
+      - run: bazel build //...
+      - run: bazel test //...
