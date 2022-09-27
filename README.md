@@ -131,12 +131,31 @@ Note that this project uses packer v2.
 ### Doing Things
 
 #### Running Locally
- 
+
+`bazelisk run //:ansible_puller`
+
+or, without bazel
+
 `go run .`
+
+#### Running tests
+
+`bazelisk test //...`
+
 
 #### Building a Production Release
 
+`bazelisk build --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64 //...`
+
+or, without bazel
+
 `GOOS=linux GOARCH=amd64 packr2 build` (see [build-release.sh](build-release.sh))
+
+#### Building Production Packages
+
+`bazelisk build //:ansible_puller_deb`
+`bazelisk build //:ansible_puller_rpm`
+
 
 #### Debugging an Ansible Run
 
