@@ -6,7 +6,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.1.3
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.5.0
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
-	github.com/gobuffalo/packr/v2 v2.8.1
 	github.com/gorilla/mux v1.7.4
 	github.com/karrick/godirwalk v1.16.1 // indirect
 	github.com/mitchellh/mapstructure v1.3.2 // indirect

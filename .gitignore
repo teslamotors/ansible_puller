@@ -13,7 +13,6 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
-packrd
 ansible_puller
 
 # Eclipse project file
