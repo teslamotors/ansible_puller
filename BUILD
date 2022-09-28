@@ -152,7 +152,7 @@ pkg_tar(
     name = "pkg_tar_ansible_puller_bin",
     srcs = [":ansible_puller_bin"],
     mode = "0755",
-    package_dir = "/usr/bin",
+    package_dir = "/opt/ansible-puller/",
 )
 
 genrule(
@@ -186,10 +186,6 @@ pkg_tar(
     ],
 )
 
-#
-# rpm
-#
-
 pkg_deb(
     name = "ansible_puller_deb",
     architecture = "amd64",
@@ -202,6 +198,10 @@ pkg_deb(
     version = VERSION,
 )
 
+#
+# rpm
+#
+
 pkg_files(
     name = "pkg_file_ansible_puller_json",
     srcs = [":ansible-puller.json"],
@@ -213,7 +213,7 @@ pkg_files(
     name = "pkg_file_ansible_puller_bin",
     srcs = ["//:ansible_puller_bin"],
     attributes = pkg_attributes(mode = "0755"),
-    prefix = "/usr/bin/",
+    prefix = "/opt/ansible-puller/",
 )
 
 pkg_files(
