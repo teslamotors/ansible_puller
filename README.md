@@ -120,13 +120,7 @@ This program expects the following to be true about its runtime environment:
 
 ## Development Notes
 
-This project uses Go Modules. Go 1.11+ should be able to handle this transparently.
-
-[packr](https://github.com/gobuffalo/packr) is used as a wrapper to build the HTML files directly into the Go binary.
-Anywhere you would use the `go` command you can substitute `packr`. For development, use the normal `go run .`,
-as packr is smart enough to read from disk when the strings are not found in memory.
-
-Note that this project uses packer v2.
+This project uses Go Modules. Go 1.19+ should be able to handle this transparently.
 
 ### Doing Things
 
@@ -147,14 +141,10 @@ or, without bazel
 
 `bazelisk build --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64 //...`
 
-or, without bazel
-
-`GOOS=linux GOARCH=amd64 packr2 build` (see [build-release.sh](build-release.sh))
-
 #### Building Production Packages
 
-`bazelisk build //:ansible_puller_deb`
-`bazelisk build //:ansible_puller_rpm`
+* `bazelisk build //:ansible_puller_deb`
+* `bazelisk build //:ansible_puller_rpm`
 
 
 #### Debugging an Ansible Run

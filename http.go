@@ -3,12 +3,12 @@
 package main
 
 import (
+	_ "embed"
 	"encoding/json"
 	"html/template"
 	"net/http"
 	"time"
 
-	"github.com/gobuffalo/packr/v2"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/viper"
@@ -24,7 +24,12 @@ const (
 
 var (
 	disableReason string
-	htmlTemplates = packr.New("myHtml", "./templates")
+
+	//go:embed templates/index.html
+	indexHtml string
+
+	//go:embed templates/ansible_controller.html
+	ansibleController string
 )
 
 // MakeChannelHandler returns an http handler that populates a channel with a single `true` when the handler is invoked
@@ -72,13 +77,7 @@ func HandlerAnsibleControl(w http.ResponseWriter, r *http.Request) {
 		disableReason,
 	}
 
-	htmlStr, err := htmlTemplates.FindString("ansible_controller.html")
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	t, _ := template.New("foo").Parse(htmlStr)
+	t, _ := template.New("foo").Parse(ansibleController)
 	_ = t.Execute(w, data)
 }
 
@@ -89,13 +88,7 @@ func HandlerIndex(w http.ResponseWriter, r *http.Request) {
 		hostname,
 	}
 
-	htmlStr, err := htmlTemplates.FindString("index.html")
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	t, _ := template.New("foo").Parse(htmlStr)
+	t, _ := template.New("foo").Parse(indexHtml)
 	_ = t.Execute(w, data)
 }
 
