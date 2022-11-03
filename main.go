@@ -60,6 +60,10 @@ var (
 		Name: "ansible_puller_debug",
 		Help: "Whether or not Ansible Puller is running in debug mode",
 	})
+	promAnsibleLastExitCode = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "ansible_puller_last_exit_code",
+		Help: "Return code from the last ansible execution",
+	})
 )
 
 func init() {
@@ -68,6 +72,7 @@ func init() {
 	prometheus.MustRegister(promAnsibleRuns)
 	prometheus.MustRegister(promAnsibleRunTime)
 	prometheus.MustRegister(promAnsibleLastSuccess)
+	prometheus.MustRegister(promAnsibleLastExitCode)
 	prometheus.MustRegister(promAnsibleSummary)
 	prometheus.MustRegister(promVersion)
 	prometheus.MustRegister(promDebug)
@@ -236,6 +241,8 @@ func ansibleRun() error {
 	runLogger.Infoln("Finding inventory for the current host")
 	inventory, target, err := aCfg.FindInventoryForHost()
 	if err != nil {
+		// Using exit code 6 (ENXIO: No such device or address) to inform that host was not found in the inventory
+		promAnsibleLastExitCode.Set(6)
 		return err
 	}
 
@@ -254,6 +261,7 @@ func ansibleRun() error {
 		promAnsibleLastSuccess.Set(float64(time.Now().Unix()))
 	}
 
+	promAnsibleLastExitCode.Set(float64(runOutput.CommandOutput.Exitcode))
 	promAnsibleSummary.WithLabelValues("ok").Set(float64(runOutput.Stats[target].Ok))
 	promAnsibleSummary.WithLabelValues("skipped").Set(float64(runOutput.Stats[target].Skipped))
 	promAnsibleSummary.WithLabelValues("changed").Set(float64(runOutput.Stats[target].Changed))
@@ -262,12 +270,12 @@ func ansibleRun() error {
 
 	runLogger.Infoln("Writing ansible output to logfile")
 
-	err = ioutil.WriteFile(viper.GetString("log-dir")+"/ansible-run-output.log", []byte(runOutput.Stdout), 0600)
+	err = ioutil.WriteFile(viper.GetString("log-dir")+"/ansible-run-output.log", []byte(runOutput.CommandOutput.Stdout), 0600)
 	if err != nil {
 		runLogger.Errorln("Unable to write Ansible output to log file: ", err)
 	}
 
-	err = ioutil.WriteFile(viper.GetString("log-dir")+"/ansible-run-error.log", []byte(runOutput.Stderr), 0600)
+	err = ioutil.WriteFile(viper.GetString("log-dir")+"/ansible-run-error.log", []byte(runOutput.CommandOutput.Stderr), 0600)
 	if err != nil {
 		runLogger.Errorln("Unable to write Ansible output to log file: ", err)
 	}

@@ -91,13 +91,13 @@ func (a AnsibleConfig) FindInventoryForHost() (string, string, error) {
 			Cwd:    a.Cwd,
 		}
 
-		output, _, err := vCmd.Run()
+		venvCommandOutput := vCmd.Run()
 		if err != nil {
-			logrus.Debugln("Ansible inventory output:", output)
+			logrus.Debugln("Ansible inventory output:", venvCommandOutput.Stdout)
 			return "", "", errors.Wrap(err, "unable to list hosts for "+item)
 		}
 
-		cleanOutput := trimMultilineWhiteSpace(output)
+		cleanOutput := trimMultilineWhiteSpace(venvCommandOutput.Stdout)
 
 		for _, target := range targets {
 			for _, line := range strings.Split(cleanOutput, "\n") {
@@ -124,12 +124,11 @@ type AnsibleNodeStatus struct {
 
 // AnsibleRunOutput is a collection of all of the information given by an Ansible run.
 type AnsibleRunOutput struct {
-	Stats  map[string]AnsibleNodeStatus `json:"stats"`
-	Stdout string
-	Stderr string
+	Stats         map[string]AnsibleNodeStatus `json:"stats"`
+	CommandOutput VenvCommandRunOutput
 }
 
-// AnsiblePlaybookRunner defines an Ansible-Playbook command to run.
+// Ansible PlaybookRunner defines an Ansible-Playbook command to run.
 //
 // All dirs are relative to the tarball root.
 type AnsiblePlaybookRunner struct {
@@ -179,18 +178,15 @@ func (a AnsiblePlaybookRunner) Run() (AnsibleRunOutput, error) {
 		vCmd.StreamOutput = true
 	}
 
-	stdout, stderr, runErr := vCmd.Run()
-
 	var ansibleOutput AnsibleRunOutput
-	ansibleOutput.Stdout = stdout
-	ansibleOutput.Stderr = stderr
+	ansibleOutput.CommandOutput = vCmd.Run()
 
-	jsonErr := json.Unmarshal([]byte(stdout), &ansibleOutput)
-	if runErr != nil && jsonErr != nil {
-		logrus.Debug("Could not parse JSON from run. Ansible stdout:\n", stdout, "Ansible stderr:\n", stderr)
+	jsonErr := json.Unmarshal([]byte(ansibleOutput.CommandOutput.Stdout), &ansibleOutput)
+	if ansibleOutput.CommandOutput.Error != nil && jsonErr != nil {
+		logrus.Debug("Could not parse JSON from run. Ansible stdout:\n", ansibleOutput.CommandOutput.Stdout, "Ansible stderr:\n", ansibleOutput.CommandOutput.Stderr)
 	}
-	if runErr != nil {
-		return ansibleOutput, errors.Wrap(runErr, "ansible run failed")
+	if ansibleOutput.CommandOutput.Error != nil {
+		return ansibleOutput, errors.Wrap(ansibleOutput.CommandOutput.Error, "ansible run failed")
 	}
 	if jsonErr != nil {
 		return ansibleOutput, errors.Wrap(jsonErr, "unable to parse ansible JSON stdout")

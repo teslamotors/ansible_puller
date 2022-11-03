@@ -66,9 +66,9 @@ func (c VenvConfig) Update(requirementsFile string) error {
 		Binary: "pip",
 		Args:   []string{"install", "-r", requirementsFile},
 	}
-	_, _, err := vCmd.Run()
-	if err != nil {
-		return errors.Wrap(err, "unable to update virtualenv")
+	venvCommandOutput := vCmd.Run()
+	if venvCommandOutput.Error != nil {
+		return errors.Wrap(venvCommandOutput.Error, "unable to update virtualenv")
 	}
 
 	return nil
@@ -84,17 +84,31 @@ type VenvCommand struct {
 	StreamOutput bool     // Whether or not the application should stream output stdout/stderr
 }
 
+type VenvCommandRunOutput struct {
+	Stdout   string
+	Stderr   string
+	Error    error
+	Exitcode int
+}
+
 // Run will execute the command described in VenvCommand.
 //
 // The strings returned are Stdout/Stderr.
-func (c VenvCommand) Run() (string, string, error) {
+func (c VenvCommand) Run() VenvCommandRunOutput {
 	ctx, cancel := context.WithTimeout(context.Background(), venvCommandTimeout)
+	CommandOutput := VenvCommandRunOutput{
+		Stdout:   "",
+		Stderr:   "",
+		Error:    nil,
+		Exitcode: -1,
+	}
 
 	defer cancel() // The cancel should be deferred so resources are cleaned up
 
 	path, ok := os.LookupEnv("PATH")
 	if !ok {
-		return "", "", errors.New("Unable to lookup the $PATH env variable")
+		CommandOutput.Error = errors.New("Unable to lookup the $PATH env variable")
+		return CommandOutput
 	}
 
 	// Updating $PATH variable to include the venv path
@@ -121,7 +135,8 @@ func (c VenvCommand) Run() (string, string, error) {
 		stdout, _ := cmd.StdoutPipe()
 		stderr, _ := cmd.StderrPipe()
 		if err := cmd.Start(); err != nil {
-			return "", "", errors.Wrap(err, "unable to start command")
+			CommandOutput.Error = errors.Wrap(err, "unable to start command")
+			return CommandOutput
 		}
 
 		for _, stream := range []io.ReadCloser{stdout, stderr} {
@@ -136,10 +151,15 @@ func (c VenvCommand) Run() (string, string, error) {
 		}
 
 		if err := cmd.Wait(); err != nil {
-			return "", "", errors.Wrap(err, "unable to complete command")
+			exitError, _ := err.(*exec.ExitError)
+			CommandOutput.Error = errors.Wrap(err, "unable to complete command")
+			CommandOutput.Exitcode = exitError.ExitCode()
+			return CommandOutput
 		}
 
-		return "", "", nil
+		CommandOutput.Exitcode = 0
+
+		return CommandOutput
 	}
 
 	var stdout, stderr bytes.Buffer
@@ -149,14 +169,22 @@ func (c VenvCommand) Run() (string, string, error) {
 	logrus.Debugln("Running venv command: ", cmd.Args)
 	err := cmd.Run()
 
-	stdoutStr, stderrStr := stdout.String(), stderr.String()
+	CommandOutput.Stderr = stderr.String()
+	CommandOutput.Stdout = stdout.String()
 
 	if ctx.Err() == context.DeadlineExceeded {
-		return stdoutStr, stderrStr, errors.Wrap(err, "Execution timed out")
+		CommandOutput.Error = errors.Wrap(err, "Execution timed out")
+		return CommandOutput
 	} else if err != nil {
 		failedCommandLogger(cmd)
-		return stdoutStr, stderrStr, errors.Wrap(err, "unable to complete command")
+		if exitError, ok := err.(*exec.ExitError); ok {
+			CommandOutput.Exitcode = exitError.ExitCode()
+		}
+		CommandOutput.Error = errors.Wrap(err, "unable to complete command")
+		return CommandOutput
 	}
 
-	return stdoutStr, stderrStr, nil
+	CommandOutput.Exitcode = 0
+
+	return CommandOutput
 }
