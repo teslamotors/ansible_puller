@@ -90,6 +90,7 @@ It currently produces the number of tasks that are ok, skipped, changed, failed,
 | `ansible_puller_debug`            | Whether or not debug mode is enabled                         |
 | `ansible_puller_disabled`         | Whether or not the puller is disabled                        |
 | `ansible_puller_last_success`     | Last timestamp of a successful run                           |
+| `ansible_puller_last_exit_code`   | Last ansible run exit code"                          |
 | `ansible_puller_play_summary`     | Ansible metrics: changed, failures, ok, skipped, unreachable |
 | `ansible_puller_run_time_seconds` | How long Ansible took to run to completion                   |
 | `ansible_puller_running`          | Whether or not the puller is currently running               |
