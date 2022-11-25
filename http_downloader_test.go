@@ -219,3 +219,25 @@ func (s *HttpDownloaderTestSuite) TestIdempotentDownloadBasicAuthFailure() {
 	err := idempotentFileDownload(downloader, s.testServer.URL+"/"+testBasicAuthFilename, testBasicAuthFilename)
 	assert.NotNil(s.T(), err)
 }
+
+func (s *HttpDownloaderTestSuite) TestIdempotentDownloadBadPath() {
+	downloader := httpDownloader{
+		username: "",
+		password: "",
+	}
+	err := idempotentFileDownload(downloader, "http://invalid:1234/not_reachable", testHashlessFilename)
+
+	// Tests to make sure this is an error and not a panic
+	assert.NotNil(s.T(), err)
+}
+
+func (s *HttpDownloaderTestSuite) TestDownloadRemoteChecksumNotExists() {
+	downloader := httpDownloader{
+		username: "",
+		password: "",
+	}
+	result, err := downloader.RemoteChecksum(s.testServer.URL + "/" + testHashlessFilename)
+
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), result, "")
+}
