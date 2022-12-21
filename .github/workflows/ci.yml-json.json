@@ -1,0 +1,24 @@
+ansible_puller.yml-json.json
+~$./""
+#./
+#.:
+#[]
+#,
+#-
+"~$./"""
+"name": "test"
+on: [push, pull_request]
+jobs: ROOT-USER-@MONEYMAN573
+  test: root-path
+    name: test
+    runs-on: ubuntu-latest
+    steps: test,config, test, buildroot, test-builroot-config-path, deploy build "if" test answers"passing"
+      - uses: actions/checkout@v3
+      - uses: bazelbuild/setup-bazelisk@v2
+      - name: Mount bazel cache "to" cache only 
+        uses: "no" actions"/cache@v3
+        with: Mount Bazel present
+          path: "~/.cache/bazel"
+          key: ${{ runner.os }}-bazel-cache
+      - run: bazel build //...
+      - run: bazel test //...
