@@ -7,7 +7,7 @@ It uses S3 or HTTP file transmission instead of Git to manage distribution (easy
 
 `ansible-pull` assumes that you are checking out an Ansible repository from git.
 This wasn't an option for us at the scale that we needed, so we turned to HTTP file distribution.
-On top of scaling, we've integrated monitoring (via Prometheus) to retain the centralized view of all of our Ansible 
+On top of scaling, we've integrated monitoring (via Prometheus) to retain the centralized view of all of our Ansible
 runs and a simple REST API to enable/disable the puller and trigger a run to give more fine-grained control of rollouts.
 
 # How to use it
@@ -53,7 +53,7 @@ And the config file:
 
 Setting `ansible-inventory` to `["inventories/production", "inventories/staging"]` and `playbook` to `site.yml`
 would mean that the puller would search for the correct host in `production` and `staging`, provided that the hosts were
-a part of `site.yml`'s run. Use the `debug` option to get more insight to the process while it is running. 
+a part of `site.yml`'s run. Use the `debug` option to get more insight to the process while it is running.
 
 ## Configuration and Metrics
 
@@ -90,7 +90,7 @@ It currently produces the number of tasks that are ok, skipped, changed, failed,
 | `ansible_puller_debug`            | Whether or not debug mode is enabled                         |
 | `ansible_puller_disabled`         | Whether or not the puller is disabled                        |
 | `ansible_puller_last_success`     | Last timestamp of a successful run                           |
-| `ansible_puller_last_exit_code`   | Last ansible run exit code"                          |
+| `ansible_puller_last_exit_code`   | Last ansible run exit code                                   |
 | `ansible_puller_play_summary`     | Ansible metrics: changed, failures, ok, skipped, unreachable |
 | `ansible_puller_run_time_seconds` | How long Ansible took to run to completion                   |
 | `ansible_puller_running`          | Whether or not the puller is currently running               |
