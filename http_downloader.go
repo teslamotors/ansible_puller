@@ -31,7 +31,11 @@ func (downloader httpDownloader) Download(remotePath, outputPath string) error {
 		Timeout: 15 * time.Second,
 	}
 
-	req, _ := http.NewRequest("GET", remotePath, nil)
+	req, err := http.NewRequest("GET", remotePath, nil)
+	if err != nil {
+		return errors.Wrap(err, "failed to create request")
+	}
+
 	if downloader.username != "" && downloader.password != "" {
 		req.SetBasicAuth(downloader.username, downloader.password)
 	}
@@ -63,7 +67,11 @@ func (downloader httpDownloader) RemoteChecksum(remotePath string) (string, erro
 	client := http.Client{
 		Timeout: timeout,
 	}
-	req, _ := http.NewRequest("GET", hashRemotePath, nil)
+	req, err := http.NewRequest("GET", hashRemotePath, nil)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to create request")
+	}
+
 	if downloader.username != "" && downloader.password != "" {
 		req.SetBasicAuth(downloader.username, downloader.password)
 	}
