@@ -78,7 +78,7 @@ func (downloader httpDownloader) RemoteChecksum(remotePath string) (string, erro
 	remoteChecksum, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		logrus.Debug("Error reading remote checksum")
-		return "", err
+		return "", errors.Wrap(err, "failed to read remote md5sum")
 	}
 
 	return string(remoteChecksum), nil
