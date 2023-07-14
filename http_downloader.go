@@ -83,6 +83,9 @@ func (downloader httpDownloader) RemoteChecksum(remotePath string) (string, erro
 		logrus.Debugf("MD5 sum not found at: %s", hashRemotePath)
 		return "", nil
 	}
+	if resp.StatusCode >= 400 {
+		return "", fmt.Errorf("bad status code: %v", resp.StatusCode)
+	}
 
 	logrus.Debugf("Found MD5 sum at: %s", hashRemotePath)
 	defer resp.Body.Close()
