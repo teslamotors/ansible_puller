@@ -76,7 +76,6 @@ func (downloader httpDownloader) RemoteChecksum(remotePath string) (string, erro
 		req.SetBasicAuth(downloader.username, downloader.password)
 	}
 
-	// A non-2xx status code does not cause an error. https://pkg.go.dev/net/http#Client.Do
 	resp, _ := client.Do(req)
 	// Ignore the checksum if it's not found, as assumed by the caller of this function.
 	if resp.StatusCode == http.StatusNotFound {
