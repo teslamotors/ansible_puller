@@ -41,7 +41,7 @@ func (downloader httpDownloader) Download(remotePath, outputPath string) error {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
-		return errors.New(fmt.Sprintf("bad status code: %v", resp.StatusCode))
+		return fmt.Errorf("bad status code: %v", resp.StatusCode)
 	}
 
 	// Persist to file in 32K chunks, instead of slurping
