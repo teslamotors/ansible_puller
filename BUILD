@@ -241,13 +241,13 @@ pkg_filegroup(
     ],
 )
 
-pkg_rpm(
-    name = "ansible_puller_rpm",
-    srcs = [":ansible_puller_rpm_files"],
-    description = DESCRIPTION,
-    license = "MIT",
-    package_file_name = "ansible-puller.rpm",
-    release = RELEASE,
-    summary = "This daemon runs ansible in pull mode",
-    version = VERSION,
-)
+#pkg_rpm(
+#    name = "ansible_puller_rpm",
+#    srcs = [":ansible_puller_rpm_files"],
+#    description = DESCRIPTION,
+#    license = "MIT",
+#    package_file_name = "ansible-puller.rpm",
+#    release = RELEASE,
+#    summary = "This daemon runs ansible in pull mode",
+#    version = VERSION,
+#)
