@@ -41,7 +41,7 @@ func (downloader httpDownloader) Download(remotePath, outputPath string) error {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
-		return errors.New(fmt.Sprintf("bad status code: %v", resp.StatusCode))
+		return fmt.Errorf("bad status code: %v", resp.StatusCode)
 	}
 
 	// Persist to file in 32K chunks, instead of slurping
@@ -78,7 +78,7 @@ func (downloader httpDownloader) RemoteChecksum(remotePath string) (string, erro
 	remoteChecksum, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		logrus.Debug("Error reading remote checksum")
-		return "", err
+		return "", errors.Wrap(err, "failed to read remote md5sum")
 	}
 
 	return string(remoteChecksum), nil

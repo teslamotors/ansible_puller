@@ -4,7 +4,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"net"
 	"os"
 	"path/filepath"
@@ -38,7 +37,7 @@ func CreateAnsibleTargetsList() ([]string, error) {
 	for _, i := range ifaces {
 		addrs, err := i.Addrs()
 		if err != nil {
-			return []string{}, errors.Wrap(err, fmt.Sprintf("Unable to extract the ip addresses from %s", i.Name))
+			return []string{}, errors.Wrapf(err, "Unable to extract the ip addresses from %s", i.Name)
 		}
 		for _, addr := range addrs {
 			var ip net.IP
