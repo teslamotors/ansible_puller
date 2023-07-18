@@ -3,10 +3,11 @@ package main
 import (
 	"crypto/md5"
 	"encoding/hex"
-	"errors"
-	"github.com/sirupsen/logrus"
 	"io"
 	"os"
+
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 // Interface with logic to govern how to actually pull objects
@@ -60,12 +61,12 @@ func idempotentFileDownload(downloader downloader, remotePath, localPath string)
 		logrus.Infof("File '%s' does not exist yet so cannot validate for new checksum", localPath)
 		currentChecksum = ""
 	} else if err != nil {
-		return err
+		return errors.Wrap(err, "failed to calc local md5sum")
 	}
 
 	remoteChecksum, err := downloader.RemoteChecksum(remotePath)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to download md5sum")
 	}
 
 	if currentChecksum != "" && remoteChecksum != "" {
@@ -80,7 +81,7 @@ func idempotentFileDownload(downloader downloader, remotePath, localPath string)
 	logrus.Infof("Downloading file: %s", remotePath)
 	err = downloader.Download(remotePath, localPath)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to download")
 	}
 
 	if remoteChecksum != "" {
@@ -88,7 +89,7 @@ func idempotentFileDownload(downloader downloader, remotePath, localPath string)
 
 		err = validateMd5Sum(localPath, remoteChecksum)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "failed to validate md5sum")
 		}
 	}
 
