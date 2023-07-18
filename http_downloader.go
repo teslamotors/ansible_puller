@@ -76,8 +76,8 @@ func (downloader httpDownloader) RemoteChecksum(remotePath string) (string, erro
 		req.SetBasicAuth(downloader.username, downloader.password)
 	}
 
-	resp, err := client.Do(req)
 	// A non-2xx status code does not cause an error. https://pkg.go.dev/net/http#Client.Do
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to get remote md5sum")
 	}
