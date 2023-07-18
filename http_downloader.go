@@ -76,9 +76,12 @@ func (downloader httpDownloader) RemoteChecksum(remotePath string) (string, erro
 		req.SetBasicAuth(downloader.username, downloader.password)
 	}
 
-	resp, err := client.Do(req)
-	if err != nil {
+	// A non-2xx status code does not cause an error. https://pkg.go.dev/net/http#Client.Do
+	resp, _ := client.Do(req)
+	// Ignore the checksum if it's not found, as assumed by the caller of this function.
+	if resp.StatusCode == http.StatusNotFound {
 		logrus.Debugf("MD5 sum not found at: %s", hashRemotePath)
+		return "", nil
 	}
 
 	logrus.Debugf("Found MD5 sum at: %s", hashRemotePath)
