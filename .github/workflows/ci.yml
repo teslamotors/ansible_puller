@@ -12,5 +12,6 @@ jobs:
         with:
           path: "~/.cache/bazel"
           key: ${{ runner.os }}-bazel-cache
+      - run: rpm --rebuilddb
       - run: bazel build //...
       - run: bazel test //...
