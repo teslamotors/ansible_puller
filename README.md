@@ -1,5 +1,6 @@
 # ansible-puller
 
+
 This daemon extends the `ansible-pull` method of running Ansible.
 It uses S3 or HTTP file transmission instead of Git to manage distribution (easy to cache), and integrates with Prometheus monitoring.
 
