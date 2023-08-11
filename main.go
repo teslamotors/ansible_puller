@@ -102,7 +102,7 @@ func init() {
 	pflag.String("venv-requirements-file", "requirements.txt", "Relative path in the pulled tarball of the requirements file to populate the virtual environment")
 
 	pflag.Int("sleep", 30, "Number of minutes to sleep between runs")
-	pflag.Int("sleep-jitter", 0, "Number of maxium minutes to jitter between runs. When set, the actual sleep time between will be  ")
+	pflag.Int("sleep-jitter", 0, "Number of maxium minutes to jitter between runs. When set, the actual sleep time between each run will be uniformaly between [sleep-jitter, sleep+jitter)")
 	pflag.Bool("start-disabled", false, "Whether or not to start the server disabled")
 	pflag.Bool("debug", false, "Start the server in debug mode")
 	pflag.Bool("once", false, "Run Ansible Puller just once, then exit")
@@ -301,7 +301,7 @@ func main() {
 	jitter := time.Duration(viper.GetInt("sleep-jitter")) * time.Minute
 
 	if jitter >= period {
-		logrus.Fatalln("sleep-jitter must be less than sleep")
+		logrus.Fatalln("sleep-jitter is too large")
 	}
 
 	runChan := make(chan bool)
@@ -315,13 +315,15 @@ func main() {
 
 	go func() {
 		runOnce()
+		if jitter == 0 {
+			for range time.Tick(period) {
+				runOnce()
+			}
+			return
+		}
 		rng := rand.New(rand.NewSource(time.Now().Unix()))
-		ticker := time.NewTicker(period)
-		defer ticker.Stop()
-		// Blocking wait for the timer to tick, then send a notification down the run channel
-		// This will tie the timer and ad-hoc jobs to the same channel so that we can simplify run triggers
-		for range ticker.C {
-			time.Sleep(time.Duration(rng.Intn(int(jitter))))
+		for {
+			time.Sleep(period - jitter + time.Duration(rng.Intn(2*int(jitter))))
 			runOnce()
 		}
 	}()
