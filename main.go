@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"time"
@@ -294,27 +295,33 @@ func main() {
 		return
 	}
 
-	rng := rand.New(time.Now().Unix())
 	promVersion.WithLabelValues(Version).Set(1)
 
 	period := time.Duration(viper.GetInt("sleep")) * time.Minute
-	runChan := make(chan bool)
+	jitter := time.Duration(viper.GetInt("sleep-jitter")) * time.Minute
 
+	if jitter >= period {
+		logrus.Fatalln("sleep-jitter must be less than sleep")
+	}
+
+	runChan := make(chan bool)
 	runOnce := func() {
+		// Non-blocking send to the run channel. If it's already running, this will be a no-op.
 		select {
-			case runChan <- true:
-			default:
+		case runChan <- true:
+		default:
 		}
 	}
 
 	go func() {
-		runChan <- true
+		runOnce()
+		rng := rand.New(rand.NewSource(time.Now().Unix()))
 		ticker := time.NewTicker(period)
 		defer ticker.Stop()
 		// Blocking wait for the timer to tick, then send a notification down the run channel
 		// This will tie the timer and ad-hoc jobs to the same channel so that we can simplify run triggers
 		for range ticker.C {
-			time.Sleep(rng.Int64n(int64(... * time.Minute)))
+			time.Sleep(time.Duration(rng.Intn(int(jitter))))
 			runOnce()
 		}
 	}()
