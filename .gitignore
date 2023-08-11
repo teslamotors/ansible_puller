@@ -17,3 +17,6 @@ ansible_puller
 
 # Eclipse project file
 .project
+
+# Bazel output
+bazel-*
