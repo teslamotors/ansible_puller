@@ -38,9 +38,10 @@ go_library(
         "util.go",
         "venv.go",
     ],
-    embedsrcs = glob([
-        "templates/*.html",
-    ]),
+    embedsrcs = [
+        "templates/ansible_controller.html",
+        "templates/index.html",
+    ],
     importpath = "github.com/teslamotors/ansible_puller",
     visibility = ["//visibility:private"],
     deps = [
