@@ -101,6 +101,7 @@ func init() {
 	pflag.String("venv-requirements-file", "requirements.txt", "Relative path in the pulled tarball of the requirements file to populate the virtual environment")
 
 	pflag.Int("sleep", 30, "Number of minutes to sleep between runs")
+	pflag.Int("sleep-jitter", 0, "Number of maxium minutes to jitter between runs. When set, the actual sleep time between will be  ")
 	pflag.Bool("start-disabled", false, "Whether or not to start the server disabled")
 	pflag.Bool("debug", false, "Start the server in debug mode")
 	pflag.Bool("once", false, "Run Ansible Puller just once, then exit")
@@ -293,27 +294,34 @@ func main() {
 		return
 	}
 
+	rng := rand.New(time.Now().Unix())
 	promVersion.WithLabelValues(Version).Set(1)
 
 	period := time.Duration(viper.GetInt("sleep")) * time.Minute
-	tickerChan := time.NewTicker(period).C
-	runChan := make(chan bool, 8)
+	runChan := make(chan bool)
+
+	runOnce := func() {
+		select {
+			case runChan <- true:
+			default:
+		}
+	}
 
 	go func() {
+		runChan <- true
+		ticker := time.NewTicker(period)
+		defer ticker.Stop()
 		// Blocking wait for the timer to tick, then send a notification down the run channel
 		// This will tie the timer and ad-hoc jobs to the same channel so that we can simplify run triggers
-		for {
-			<-tickerChan
-			runChan <- true
+		for range ticker.C {
+			time.Sleep(rng.Int64n(int64(... * time.Minute)))
+			runOnce()
 		}
 	}()
 
 	go func() {
 		logrus.Infoln(fmt.Sprintf("Launching Ansible Runner. Runs %d minutes apart.", viper.GetInt("sleep")))
-		runChan <- true
-		for {
-			<-runChan
-
+		for range runChan {
 			start := time.Now()
 			err := ansibleRun()
 			elapsed := time.Since(start)
@@ -329,7 +337,7 @@ func main() {
 		}
 	}()
 
-	srv := NewServer(runChan)
+	srv := NewServer(runOnce)
 	logrus.Infoln("Starting server on " + viper.GetString("http-listen-string"))
 	logrus.Fatal(srv.ListenAndServe())
 }
