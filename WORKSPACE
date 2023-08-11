@@ -11,16 +11,26 @@ http_archive(
 
 http_archive(
     name = "bazel_gazelle",
-    sha256 = "62ca106be173579c0a167deb23358fdfe71ffa1e4cfdddf5582af26520f1c66f",
+    sha256 = "b8b6d75de6e4bf7c41b7737b183523085f56283f6db929b86c5e7e1f09cf59c9",
     urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/v0.23.0/bazel-gazelle-v0.23.0.tar.gz",
-        "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.23.0/bazel-gazelle-v0.23.0.tar.gz",
+        "https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/v0.31.1/bazel-gazelle-v0.31.1.tar.gz",
+        "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.31.1/bazel-gazelle-v0.31.1.tar.gz",
     ],
 )
 
 load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
-load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
+load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
 load("//:deps.bzl", "go_dependencies")
+
+go_rules_dependencies()
+
+go_register_toolchains(version = "1.19.1")
+
+gazelle_dependencies()
+
+# gazelle:repository_macro deps.bzl%go_dependencies
+go_dependencies()
+
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 http_archive(
@@ -41,13 +51,6 @@ load("@rules_pkg//toolchains/rpm:rpmbuild_configure.bzl", "find_system_rpmbuild"
 
 find_system_rpmbuild(name = "rules_pkg_rpmbuild")
 
-go_repository(
-    name = "com_github_mwitkow_go_proto_validators",
-    importpath = "github.com/mwitkow/go-proto-validators",
-    sum = "h1:F6LFfmgVnfULfaRsQWBbe7F7ocuHCr9+7m+GAeDzNbQ=",
-    version = "v0.2.0",
-)
-
 git_repository(
     name = "com_google_protobuf",
     commit = "09745575a923640154bcf307fba8aedff47f240a",
@@ -65,12 +68,3 @@ http_archive(
         "https://zlib.net/zlib-1.2.11.tar.gz",
     ],
 )
-
-# gazelle:repository_macro deps.bzl%go_dependencies
-go_dependencies()
-
-go_rules_dependencies()
-
-go_register_toolchains(version = "1.19.1")
-
-gazelle_dependencies()
