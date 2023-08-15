@@ -330,7 +330,7 @@ func main() {
 	}()
 
 	go func() {
-		logrus.Infoln(fmt.Sprintf("Launching Ansible Runner. Runs %d minutes apart.", viper.GetInt("sleep")))
+		logrus.Infoln(fmt.Sprintf("Launching Ansible Runner. Runs %d minutes (with %d mintues jitter) apart.", viper.GetInt("sleep"), viper.GetInt("sleep-jitter")))
 		for range runChan {
 			start := time.Now()
 			err := ansibleRun()
