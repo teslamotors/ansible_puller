@@ -32,10 +32,10 @@ var (
 	ansibleController string
 )
 
-// MakeChannelHandler returns an http handler that populates a channel with a single `true` when the handler is invoked
-func MakeChannelHandler(c chan bool) func(http.ResponseWriter, *http.Request) {
+// MakeRunOnceHandler returns an http handler that calls runOnce when invoked.
+func MakeRunOnceHandler(runOnce func()) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		c <- true
+		runOnce()
 		http.Redirect(w, r, httpPathAnsibleControl, http.StatusFound)
 	}
 }
@@ -114,13 +114,13 @@ func HandlerStatus(w http.ResponseWriter, r *http.Request) {
 
 // NewServer creates a new http server
 //
-// runChan is a channel that we will write to when the adhocTrigger handler is invoked.
-func NewServer(runChan chan bool) *http.Server {
+// runOnce is a function that we will be called when the adhocTrigger handler is invoked.
+func NewServer(runOnce func()) *http.Server {
 	r := mux.NewRouter()
 
 	r.Handle("/metrics", promhttp.Handler())
 	r.HandleFunc("/", HandlerIndex).Methods("GET")
-	r.HandleFunc(httpPathAnsibleAdhocTrigger, MakeChannelHandler(runChan)).Methods("POST")
+	r.HandleFunc(httpPathAnsibleAdhocTrigger, MakeRunOnceHandler(runOnce)).Methods("POST")
 	r.HandleFunc(httpPathAnsibleDisable, HandlerAnsibleDisable).Methods("POST")
 	r.HandleFunc(httpPathAnsibleEnable, HandlerAnsibleEnable).Methods("POST")
 	r.HandleFunc(httpPathAnsibleControl, HandlerAnsibleControl).Methods("GET")

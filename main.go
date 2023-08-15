@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"time"
@@ -101,6 +102,7 @@ func init() {
 	pflag.String("venv-requirements-file", "requirements.txt", "Relative path in the pulled tarball of the requirements file to populate the virtual environment")
 
 	pflag.Int("sleep", 30, "Number of minutes to sleep between runs")
+	pflag.Int("sleep-jitter", 0, "Number of maxium minutes to jitter between runs. When set, the actual sleep time between each run will be uniformly distributed between [sleep-jitter, sleep+jitter)")
 	pflag.Bool("start-disabled", false, "Whether or not to start the server disabled")
 	pflag.Bool("debug", false, "Start the server in debug mode")
 	pflag.Bool("once", false, "Run Ansible Puller just once, then exit")
@@ -296,24 +298,40 @@ func main() {
 	promVersion.WithLabelValues(Version).Set(1)
 
 	period := time.Duration(viper.GetInt("sleep")) * time.Minute
-	tickerChan := time.NewTicker(period).C
-	runChan := make(chan bool, 8)
+	jitter := time.Duration(viper.GetInt("sleep-jitter")) * time.Minute
+
+	if jitter >= period {
+		logrus.Fatalf("sleep-jitter is too large, it must be less than the 'sleep' period %d", viper.GetInt("sleep"))
+	}
+
+	runChan := make(chan bool)
+	runOnce := func() {
+		// Non-blocking send to the run channel. If it's already running, this will be a no-op.
+		select {
+		case runChan <- true:
+		default:
+		}
+	}
 
 	go func() {
-		// Blocking wait for the timer to tick, then send a notification down the run channel
-		// This will tie the timer and ad-hoc jobs to the same channel so that we can simplify run triggers
+		runOnce()
+		if jitter == 0 {
+			for range time.Tick(period) {
+				runOnce()
+			}
+			return
+		}
+		rng := rand.New(rand.NewSource(time.Now().Unix()))
 		for {
-			<-tickerChan
-			runChan <- true
+			// Sleep for a random duration in [period - jitter, period + jitter).
+			time.Sleep(period - jitter + time.Duration(rng.Int63n(2*int64(jitter))))
+			runOnce()
 		}
 	}()
 
 	go func() {
-		logrus.Infoln(fmt.Sprintf("Launching Ansible Runner. Runs %d minutes apart.", viper.GetInt("sleep")))
-		runChan <- true
-		for {
-			<-runChan
-
+		logrus.Infoln(fmt.Sprintf("Launching Ansible Runner. Runs %d minutes (with %d mintues jitter) apart.", viper.GetInt("sleep"), viper.GetInt("sleep-jitter")))
+		for range runChan {
 			start := time.Now()
 			err := ansibleRun()
 			elapsed := time.Since(start)
@@ -329,7 +347,7 @@ func main() {
 		}
 	}()
 
-	srv := NewServer(runChan)
+	srv := NewServer(runOnce)
 	logrus.Infoln("Starting server on " + viper.GetString("http-listen-string"))
 	logrus.Fatal(srv.ListenAndServe())
 }
