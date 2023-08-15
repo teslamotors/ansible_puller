@@ -114,7 +114,7 @@ func HandlerStatus(w http.ResponseWriter, r *http.Request) {
 
 // NewServer creates a new http server
 //
-// runOnce is a function that we will called when the adhocTrigger handler is invoked.
+// runOnce is a function that we will be called when the adhocTrigger handler is invoked.
 func NewServer(runOnce func()) *http.Server {
 	r := mux.NewRouter()
 
