@@ -301,7 +301,7 @@ func main() {
 	jitter := time.Duration(viper.GetInt("sleep-jitter")) * time.Minute
 
 	if jitter >= period {
-		logrus.Fatalln("sleep-jitter is too large")
+		logrus.Fatalf("sleep-jitter is too large, it must be less than the 'sleep' period %d", viper.GetInt("sleep"))
 	}
 
 	runChan := make(chan bool)
@@ -323,6 +323,7 @@ func main() {
 		}
 		rng := rand.New(rand.NewSource(time.Now().Unix()))
 		for {
+			// Sleep for a random duration in [period - jitter, period + jitter).
 			time.Sleep(period - jitter + time.Duration(rng.Intn(2*int(jitter))))
 			runOnce()
 		}
