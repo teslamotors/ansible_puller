@@ -102,7 +102,7 @@ func init() {
 	pflag.String("venv-requirements-file", "requirements.txt", "Relative path in the pulled tarball of the requirements file to populate the virtual environment")
 
 	pflag.Int("sleep", 30, "Number of minutes to sleep between runs")
-	pflag.Int("sleep-jitter", 0, "Number of maxium minutes to jitter between runs. When set, the actual sleep time between each run will be uniformaly between [sleep-jitter, sleep+jitter)")
+	pflag.Int("sleep-jitter", 0, "Number of maxium minutes to jitter between runs. When set, the actual sleep time between each run will be uniformly distributed between [sleep-jitter, sleep+jitter)")
 	pflag.Bool("start-disabled", false, "Whether or not to start the server disabled")
 	pflag.Bool("debug", false, "Start the server in debug mode")
 	pflag.Bool("once", false, "Run Ansible Puller just once, then exit")
@@ -324,7 +324,7 @@ func main() {
 		rng := rand.New(rand.NewSource(time.Now().Unix()))
 		for {
 			// Sleep for a random duration in [period - jitter, period + jitter).
-			time.Sleep(period - jitter + time.Duration(rng.Intn(2*int(jitter))))
+			time.Sleep(period - jitter + time.Duration(rng.Int63n(2*int64(jitter))))
 			runOnce()
 		}
 	}()
