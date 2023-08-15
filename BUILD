@@ -9,6 +9,16 @@ load("@rules_pkg//:mappings.bzl", "pkg_attributes", "pkg_filegroup", "pkg_files"
 
 gazelle(name = "gazelle")
 
+gazelle(
+    name = "update-deps",
+    args = [
+        "-from_file=go.mod",
+        "-to_macro=deps.bzl%go_dependencies",
+        "-prune",
+    ],
+    command = "update-repos",
+)
+
 buildifier(name = "buildifier")
 
 #
@@ -28,9 +38,10 @@ go_library(
         "util.go",
         "venv.go",
     ],
-    embedsrcs = glob([
-        "templates/*.html",
-    ]),
+    embedsrcs = [
+        "templates/ansible_controller.html",
+        "templates/index.html",
+    ],
     importpath = "github.com/teslamotors/ansible_puller",
     visibility = ["//visibility:private"],
     deps = [
@@ -62,62 +73,6 @@ go_test(
         "s3_downloader_test.go",
         "unarchive_test.go",
     ],
-    data = [
-        ":ansible-puller.json",
-        ":testdata",
-    ],
-    embed = [":ansible_puller_lib"],
-    deps = [
-        "@com_github_stretchr_testify//assert",
-        "@com_github_stretchr_testify//suite",
-    ],
-)
-
-go_test(
-    name = "http_downloader_test",
-    srcs = ["http_downloader_test.go"],
-    data = [
-        ":ansible-puller.json",
-        ":testdata",
-    ],
-    embed = [":ansible_puller_lib"],
-    deps = [
-        "@com_github_stretchr_testify//assert",
-        "@com_github_stretchr_testify//suite",
-    ],
-)
-
-go_test(
-    name = "http_test",
-    srcs = ["http_test.go"],
-    data = [
-        ":ansible-puller.json",
-        ":testdata",
-    ],
-    embed = [":ansible_puller_lib"],
-    deps = [
-        "@com_github_stretchr_testify//assert",
-        "@com_github_stretchr_testify//suite",
-    ],
-)
-
-go_test(
-    name = "s3_downloader_test",
-    srcs = ["s3_downloader_test.go"],
-    data = [
-        ":ansible-puller.json",
-        ":testdata",
-    ],
-    embed = [":ansible_puller_lib"],
-    deps = [
-        "@com_github_stretchr_testify//assert",
-        "@com_github_stretchr_testify//suite",
-    ],
-)
-
-go_test(
-    name = "unarchive_test",
-    srcs = ["unarchive_test.go"],
     data = [
         ":ansible-puller.json",
         ":testdata",
