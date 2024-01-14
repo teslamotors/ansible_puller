@@ -74,10 +74,10 @@ func extractTgz(src, dest string) error {
 		targetPath := filepath.Join(dest, header.Name)
 
 		switch header.Typeflag {
-    case tar.TypeSymlink:
-      if err := os.Symlink(header.Linkname, targetPath); err != nil {
-        return errors.Wrap(err, "unable to create symlink from tar")
-      }
+		case tar.TypeSymlink:
+			if err := os.Symlink(header.Linkname, targetPath); err != nil {
+				return errors.Wrap(err, "unable to create symlink from tar")
+			}
 
 		case tar.TypeDir:
 			if _, err := os.Stat(targetPath); os.IsNotExist(err) {
