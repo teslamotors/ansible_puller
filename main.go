@@ -106,6 +106,7 @@ func init() {
 	pflag.Bool("start-disabled", false, "Whether or not to start the server disabled")
 	pflag.Bool("debug", false, "Start the server in debug mode")
 	pflag.Bool("once", false, "Run Ansible Puller just once, then exit")
+	pflag.Bool("run-on-start", true, "Runs Ansible as soon as the service starts")
 
 	err := viper.ReadInConfig()
 	if err != nil {
@@ -287,12 +288,16 @@ func ansibleRun() error {
 }
 
 func main() {
-	if viper.GetBool("once") {
+	// Runs Ansible puller when the service is first started
+	logrus.Infoln("Launching Ansible Runner")
+	if viper.GetBool("once") || viper.GetBool("run-on-start") {
+
 		if err := ansibleRun(); err != nil {
 			logrus.Fatalln("Ansible run failed due to: " + err.Error())
 		}
-
-		return
+		if viper.GetBool("once") {
+			return
+		}
 	}
 
 	promVersion.WithLabelValues(Version).Set(1)
@@ -330,7 +335,7 @@ func main() {
 	}()
 
 	go func() {
-		logrus.Infoln(fmt.Sprintf("Launching Ansible Runner. Runs %d minutes (with %d mintues jitter) apart.", viper.GetInt("sleep"), viper.GetInt("sleep-jitter")))
+		logrus.Infoln(fmt.Sprintf("Runs every %d minutes with %d mintues of jitter.", viper.GetInt("sleep"), viper.GetInt("sleep-jitter")))
 		for range runChan {
 			start := time.Now()
 			err := ansibleRun()
