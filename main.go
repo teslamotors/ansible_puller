@@ -314,7 +314,7 @@ func main() {
 	}
 
 	go func() {
-		runOnce()
+		runChan <- true // block until the first run is triggered
 		if jitter == 0 {
 			for range time.Tick(period) {
 				runOnce()
