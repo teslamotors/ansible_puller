@@ -140,12 +140,12 @@ or, without bazel
 
 #### Building a Production Release
 
-`bazelisk build --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64 //...`
+`bazelisk build --config=release --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64 //...`
 
 #### Building Production Packages
 
-* `bazelisk build //:ansible_puller_deb`
-* `bazelisk build //:ansible_puller_rpm`
+* `bazelisk build --config=release //:ansible_puller_deb`
+* `bazelisk build --config=release //:ansible_puller_rpm`
 
 
 #### Debugging an Ansible Run

@@ -58,6 +58,7 @@ go_library(
         "@com_github_spf13_pflag//:pflag",
         "@com_github_spf13_viper//:viper",
     ],
+    x_defs = {"main.Version": "{STABLE_GIT_COMMIT}"}
 )
 
 #
