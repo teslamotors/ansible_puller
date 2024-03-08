@@ -106,6 +106,7 @@ func init() {
 	pflag.Bool("start-disabled", false, "Whether or not to start the server disabled")
 	pflag.Bool("debug", false, "Start the server in debug mode")
 	pflag.Bool("once", false, "Run Ansible Puller just once, then exit")
+	pflag.Bool("version", false, "Print the build version, then exit")
 
 	err := viper.ReadInConfig()
 	if err != nil {
@@ -287,6 +288,11 @@ func ansibleRun() error {
 }
 
 func main() {
+	if viper.GetBool("version") {
+		fmt.Println(Version)
+		return
+	}
+
 	if viper.GetBool("once") {
 		if err := ansibleRun(); err != nil {
 			logrus.Fatalln("Ansible run failed due to: " + err.Error())
