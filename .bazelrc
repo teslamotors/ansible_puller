@@ -1,0 +1,7 @@
+# Bazel stamp variable generations
+build --workspace_status_command=$(pwd)/ws_status.sh
+
+# For release
+# To use it: bazel COMMAND --config=release
+build:release --compilation_mode=opt
+build:release --stamp
