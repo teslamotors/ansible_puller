@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"os"
 
@@ -52,9 +53,13 @@ func validateMd5Sum(path, checksum string) error {
 // Checks the md5sum of the file to see if the remote file should be downloaded
 //
 // The MD5 checking may be an Artifactory-specific setup because it will look for the hash at "${url}.md5"
+// or will look for the hash in the path provided in http-checksum-url.
 // If the MD5 is not found, this will download the file
-func idempotentFileDownload(downloader downloader, remotePath, localPath string) error {
-	logrus.Debugf("Starting idempotent download of %s to %s", remotePath, localPath)
+func idempotentFileDownload(downloader downloader, remotePath, checksumURL, localPath string) error {
+	if len(checksumURL) == 0 {
+		checksumURL = fmt.Sprintf("%s.md5", remotePath)
+	}
+	logrus.Debugf("Starting idempotent download of %s to %s, remote checksum: %s", remotePath, localPath, checksumURL)
 
 	currentChecksum, err := md5sum(localPath)
 	if os.IsNotExist(err) {
@@ -64,7 +69,7 @@ func idempotentFileDownload(downloader downloader, remotePath, localPath string)
 		return errors.Wrap(err, "failed to calc local md5sum")
 	}
 
-	remoteChecksum, err := downloader.RemoteChecksum(remotePath)
+	remoteChecksum, err := downloader.RemoteChecksum(checksumURL)
 	if err != nil {
 		return errors.Wrap(err, "failed to download md5sum")
 	}

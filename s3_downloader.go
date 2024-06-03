@@ -7,13 +7,14 @@ import (
 	"os"
 	"regexp"
 
+	"io/ioutil"
+	"path/filepath"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/sirupsen/logrus"
-	"io/ioutil"
-	"path/filepath"
 )
 
 type s3Downloader struct {
@@ -105,8 +106,7 @@ func (downloader s3Downloader) Download(remotePath, outputPath string) (err erro
 	return
 }
 
-func (downloader s3Downloader) RemoteChecksum(remotePath string) (string, error) {
-	hashRemotePath := fmt.Sprintf("%s.md5", remotePath)
+func (downloader s3Downloader) RemoteChecksum(checksumURL string) (string, error) {
 
 	dir, err := ioutil.TempDir("", "*")
 	if err != nil {
@@ -116,13 +116,13 @@ func (downloader s3Downloader) RemoteChecksum(remotePath string) (string, error)
 	defer os.RemoveAll(dir)
 	hashFile := filepath.Join(dir, "md5Hash")
 
-	err = downloader.Download(hashRemotePath, hashFile)
+	err = downloader.Download(checksumURL, hashFile)
 	if err != nil {
 		logrus.Infof("MD5 sum not reachable. %v", err)
 		return "", nil
 	}
 
-	logrus.Infof("Found MD5 sum at: %s", hashRemotePath)
+	logrus.Infof("Found MD5 sum at: %s", checksumURL)
 
 	content, err := ioutil.ReadFile(hashFile)
 	if err != nil {

@@ -60,14 +60,13 @@ func (downloader httpDownloader) Download(remotePath, outputPath string) error {
 	return nil
 }
 
-func (downloader httpDownloader) RemoteChecksum(remotePath string) (string, error) {
-	hashRemotePath := fmt.Sprintf("%s.md5", remotePath)
+func (downloader httpDownloader) RemoteChecksum(checksumURL string) (string, error) {
 
 	timeout := time.Duration(2 * time.Second)
 	client := http.Client{
 		Timeout: timeout,
 	}
-	req, err := http.NewRequest("GET", hashRemotePath, nil)
+	req, err := http.NewRequest("GET", checksumURL, nil)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to create request")
 	}
@@ -82,7 +81,7 @@ func (downloader httpDownloader) RemoteChecksum(remotePath string) (string, erro
 	}
 	// Ignore the checksum if it's not found, as assumed by the caller of this function.
 	if resp.StatusCode == http.StatusNotFound {
-		logrus.Debugf("MD5 sum not found at: %s", hashRemotePath)
+		logrus.Debugf("MD5 sum not found at: %s", checksumURL)
 		return "", nil
 	}
 	// A non-2xx status code does not cause an error, so we handle it here. https://pkg.go.dev/net/http#Client.Do
@@ -90,7 +89,7 @@ func (downloader httpDownloader) RemoteChecksum(remotePath string) (string, erro
 		return "", fmt.Errorf("bad status code: %v", resp.StatusCode)
 	}
 
-	logrus.Debugf("Found MD5 sum at: %s", hashRemotePath)
+	logrus.Debugf("Found MD5 sum at: %s", checksumURL)
 	defer resp.Body.Close()
 	remoteChecksum, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
