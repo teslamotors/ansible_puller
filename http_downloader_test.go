@@ -18,6 +18,9 @@ var (
 	testFilenameHash = "testfile.txt.md5"
 	testMD5          = "7b20fda6af27c1b59ebdd8c09a93e770"
 
+  testEmptyChecksumUrl  = ""
+  testChecksumUrlPath   = "custom.txt.md5"
+
 	testHashlessFilename = "nohash.txt"
 	testHashlessText     = []byte("Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.")
 
@@ -65,6 +68,8 @@ func (s *HttpDownloaderTestSuite) SetupTest() {
 					rw.Write(testText)
 				case "/" + testFilenameHash:
 					rw.Write([]byte(testMD5))
+        case "/" + testChecksumUrlPath:
+					rw.Write([]byte(testMD5))
 				case "/" + testHashlessFilename:
 					rw.Write(testHashlessText)
 				default:
@@ -98,7 +103,7 @@ func (s *HttpDownloaderTestSuite) TestIdempotentDownloadWhenNoFileExists() {
 		username: "",
 		password: "",
 	}
-	err := idempotentFileDownload(downloader, s.testServer.URL+"/"+testFilename, testFilename)
+	err := idempotentFileDownload(downloader, s.testServer.URL+"/"+testFilename, testEmptyChecksumUrl, testFilename)
 	assert.Nil(s.T(), err)
 
 	text, err := ioutil.ReadFile(testFilename)
@@ -111,7 +116,7 @@ func (s *HttpDownloaderTestSuite) TestIdempotentDownloadWhenCurrentFileExists() 
 		username: "",
 		password: "",
 	}
-	err := idempotentFileDownload(downloader, s.testServer.URL+"/"+testFilename, testFilename)
+	err := idempotentFileDownload(downloader, s.testServer.URL+"/"+testFilename, testEmptyChecksumUrl, testFilename)
 	assert.Nil(s.T(), err)
 
 	text, err := ioutil.ReadFile(testFilename)
@@ -125,7 +130,7 @@ func (s *HttpDownloaderTestSuite) TestIdempotentDownloadWhenCurrentFileExists() 
 	modtime := finfo.ModTime()
 
 	// Idempotent Download
-	err = idempotentFileDownload(downloader, s.testServer.URL+"/"+testFilename, testFilename)
+	err = idempotentFileDownload(downloader, s.testServer.URL+"/"+testFilename, testEmptyChecksumUrl, testFilename)
 	assert.Nil(s.T(), err)
 
 	newFinfo, err := os.Stat(testFilename)
@@ -140,7 +145,7 @@ func (s *HttpDownloaderTestSuite) TestIdempotentDownloadWhenOldFileExists() {
 		username: "",
 		password: "",
 	}
-	err := idempotentFileDownload(downloader, s.testServer.URL+"/"+testHashlessFilename, testFilename)
+	err := idempotentFileDownload(downloader, s.testServer.URL+"/"+testHashlessFilename, testEmptyChecksumUrl, testFilename)
 	assert.Nil(s.T(), err)
 
 	_, err = ioutil.ReadFile(testFilename)
@@ -156,7 +161,7 @@ func (s *HttpDownloaderTestSuite) TestIdempotentDownloadWhenOldFileExists() {
 	time.Sleep(1 * time.Second)
 
 	// Idempotent Download
-	err = idempotentFileDownload(downloader, s.testServer.URL+"/"+testFilename, testFilename)
+	err = idempotentFileDownload(downloader, s.testServer.URL+"/"+testFilename, testEmptyChecksumUrl, testFilename)
 	assert.Nil(s.T(), err)
 
 	newFinfo, err := os.Stat(testFilename)
@@ -166,12 +171,41 @@ func (s *HttpDownloaderTestSuite) TestIdempotentDownloadWhenOldFileExists() {
 	assert.NotEqual(s.T(), modtime, newModtime, "modification time should change")
 }
 
+func (s *HttpDownloaderTestSuite) TestIdempotentDownloadWhenCurrentFileExistsUsingChecksumUrl() {
+	downloader := httpDownloader{
+		username: "",
+		password: "",
+	}
+	err := idempotentFileDownload(downloader, s.testServer.URL+"/"+testFilename, s.testServer.URL+"/"+testChecksumUrlPath, testFilename)
+	assert.Nil(s.T(), err)
+
+	text, err := ioutil.ReadFile(testFilename)
+	assert.Nil(s.T(), err)
+	assert.Equal(s.T(), text, testText, "file should download correctly")
+
+	// Get original file info
+	finfo, err := os.Stat(testFilename)
+	assert.Nil(s.T(), err)
+
+	modtime := finfo.ModTime()
+
+	// Idempotent Download
+	err = idempotentFileDownload(downloader, s.testServer.URL+"/"+testFilename, testEmptyChecksumUrl, testFilename)
+	assert.Nil(s.T(), err)
+
+	newFinfo, err := os.Stat(testFilename)
+	newModtime := newFinfo.ModTime()
+
+	// Make sure the file didn't change
+	assert.Equal(s.T(), modtime, newModtime, "modification time should not change")
+}
+
 func (s *HttpDownloaderTestSuite) TestIdempotentDownloadNoRemoteHash() {
 	downloader := httpDownloader{
 		username: "",
 		password: "",
 	}
-	err := idempotentFileDownload(downloader, s.testServer.URL+"/"+testHashlessFilename, testHashlessFilename)
+	err := idempotentFileDownload(downloader, s.testServer.URL+"/"+testHashlessFilename, testEmptyChecksumUrl, testHashlessFilename)
 	assert.Nil(s.T(), err)
 
 	text, err := ioutil.ReadFile(testHashlessFilename)
@@ -188,7 +222,7 @@ func (s *HttpDownloaderTestSuite) TestIdempotentDownloadNoRemoteHash() {
 	time.Sleep(1 * time.Second)
 
 	// Idempotent Download
-	err = idempotentFileDownload(downloader, s.testServer.URL+"/"+testHashlessFilename, testHashlessFilename)
+	err = idempotentFileDownload(downloader, s.testServer.URL+"/"+testHashlessFilename, testEmptyChecksumUrl, testHashlessFilename)
 	assert.Nil(s.T(), err)
 
 	newFinfo, err := os.Stat(testHashlessFilename)
@@ -203,7 +237,7 @@ func (s *HttpDownloaderTestSuite) TestIdempotentDownloadBasicAuth() {
 		username: testBasicAuthUser,
 		password: testBasicAuthPass,
 	}
-	err := idempotentFileDownload(downloader, s.testServer.URL+"/"+testBasicAuthFilename, testBasicAuthFilename)
+	err := idempotentFileDownload(downloader, s.testServer.URL+"/"+testBasicAuthFilename, testEmptyChecksumUrl, testBasicAuthFilename)
 	assert.Nil(s.T(), err)
 
 	text, err := ioutil.ReadFile(testBasicAuthFilename)
@@ -216,18 +250,18 @@ func (s *HttpDownloaderTestSuite) TestIdempotentDownloadBasicAuthFailure() {
 		username: "nottherightuser",
 		password: "nottherightpass",
 	}
-	err := idempotentFileDownload(downloader, s.testServer.URL+"/"+testBasicAuthFilename, testBasicAuthFilename)
+	err := idempotentFileDownload(downloader, s.testServer.URL+"/"+testBasicAuthFilename, testEmptyChecksumUrl, testBasicAuthFilename)
 	assert.NotNil(s.T(), err)
 }
 
 func (s *HttpDownloaderTestSuite) TestIdempotentDownloadFailureFromInvalidURL() {
 	downloader := httpDownloader{}
-	err := idempotentFileDownload(downloader, "http://192.168.0.%31/invalid-url", testFilename)
+	err := idempotentFileDownload(downloader, "http://192.168.0.%31/invalid-url", testEmptyChecksumUrl, testFilename)
 	assert.NotNil(s.T(), err)
 }
 
 func (s *HttpDownloaderTestSuite) TestIdempotentDownloadFailureFromUnresponsiveServer() {
 	downloader := httpDownloader{}
-	err := idempotentFileDownload(downloader, "http://0.0.0.0/unresponsive/"+testFilename, testFilename)
+	err := idempotentFileDownload(downloader, "http://0.0.0.0/unresponsive/"+testFilename, testEmptyChecksumUrl, testFilename)
 	assert.NotNil(s.T(), err)
 }

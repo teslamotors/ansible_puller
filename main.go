@@ -89,6 +89,7 @@ func init() {
 	pflag.String("http-pass", "", "HTTP password for pulling the remote file")
 
 	pflag.String("http-url", "", "Remote endpoint to retrieve the file from")
+	pflag.String("http-checksum-url", "", "Remote endpoint to retrieve the checksum from")
 	pflag.String("s3-arn", "", "Remote object ARN in S3 to retrieve")
 	pflag.String("s3-conn-region", "", "AWS service endpoint region for S3")
 
@@ -153,6 +154,7 @@ func ansibleEnable() {
 
 func getAnsibleRepository(runDir string) error {
 	httpURL := viper.GetString("http-url")
+	checksumURL := viper.GetString("http-checksum-url")
 	s3Obj := viper.GetString("s3-arn")
 	s3ConnectionRegion := viper.GetString("s3-conn-region")
 	localCacheFile := fmt.Sprintf("/tmp/%s.tgz", appName)
@@ -167,13 +169,13 @@ func getAnsibleRepository(runDir string) error {
 			username: viper.GetString("http-user"),
 			password: viper.GetString("http-pass"),
 		}
-		err = idempotentFileDownload(downloader, remoteHttpURL, localCacheFile)
+		err = idempotentFileDownload(downloader, remoteHttpURL, checksumURL, localCacheFile)
 	} else if s3Obj != "" {
 		downloader, createError := createS3Downloader(s3ConnectionRegion)
 		if createError != nil {
 			return errors.Wrap(err, "unable to pull Ansible repo")
 		}
-		err = idempotentFileDownload(downloader, s3Obj, localCacheFile)
+		err = idempotentFileDownload(downloader, s3Obj, checksumURL, localCacheFile)
 	}
 	if err != nil {
 		return errors.Wrap(err, "unable to pull Ansible repo")

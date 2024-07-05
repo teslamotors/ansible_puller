@@ -66,6 +66,7 @@ Config file should be in: `/etc/ansible-puller/config.json`, `$HOME/.ansible-pul
 | `http-user`              | `""`                                  | Username for HTTP Basic Auth                                                            |
 | `http-pass`              | `""`                                  | Password for HTTP basic Auth                                                            |
 | `http-url`               | `""`                                  | HTTP Url to find the Ansible tarball. Required if s3-arn is not set                     |
+| `http-checksum-url`      | `""`                                  | HTTP Url to find the Ansible tarball md5 hash. Defaults to http-url + `.md5`.           |
 | `log-dir`                | `"/var/log/ansible-puller"`           | Log directory (must exist)                                                              |
 | `ansible-dir`            | `""`                                  | Path in the pulled tarball to cd into before ansible commands - usually ansible.cfg dir |
 | `ansible-playbook`       | `"site.yml"`                          | The playbook that will be run  - relative to ansible-dir                                |
@@ -104,8 +105,9 @@ remote.
 
 By design, ansible_puller will look at the remote path `<resource_path>.md5` to discover the live
 MD5 checksum. If, for example, your resource is located at `https://example.com/some/file.tgz` then
-ansible_puller will look for the MD5 hash at `https://example.com/some/file.tgz.md5`. The following
-conditions will lead to a (re-)download of the ansible tarball:
+ansible_puller will look for the MD5 hash at `https://example.com/some/file.tgz.md5`. A custom remote
+path can be specified with the `http-checksum-url` option.
+The following conditions will lead to a (re-)download of the ansible tarball:
 - There is no current ansible tarball at the specified local path
 - The current hash of the local ansible tarball not match the remote checksum
 - The remote checksum does not exist
