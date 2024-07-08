@@ -30,14 +30,9 @@ type VenvConfig struct {
 
 // Takes a VenvConfig and will create a new virtual environment.
 func makeVenv(cfg VenvConfig) error {
-	venvExecutable, err := exec.LookPath("virtualenv")
-	if err != nil {
-		return errors.Wrap(err, "virtualenv not found in path")
-	}
+	cmd := exec.Command(cfg.Python, "-m", "venv", cfg.Path)
 
-	cmd := exec.Command(venvExecutable, "--python", cfg.Python, cfg.Path)
-
-	err = cmd.Run()
+	err := cmd.Run()
 	if err != nil {
 		failedCommandLogger(cmd)
 		return errors.Wrap(err, "unable to create virtual environment")
