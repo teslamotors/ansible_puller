@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -36,6 +37,9 @@ func makeVenv(cfg VenvConfig) error {
 	}
 	logrus.Debugln("Detected Python version:", pythonVersion)
 
+	useVenv := pythonVersionAtLeast(pythonVersion, 3, 3)
+	logrus.Debugln("Use venv:", useVenv)
+
 	cmd := exec.Command(cfg.Python, "-m", "venv", cfg.Path)
 
 	err = cmd.Run()
@@ -45,6 +49,34 @@ func makeVenv(cfg VenvConfig) error {
 	}
 
 	return nil
+}
+
+// pythonVersionAtLeast checks if the Python version is at least major.minor.
+func pythonVersionAtLeast(version string, major int, minor int) bool {
+	parts := strings.Split(version, ".")
+	if len(parts) < 2 {
+		return false
+	}
+
+	majorVersion, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return false
+	}
+
+	minorVersion, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return false
+	}
+
+	if majorVersion > major {
+		return true
+	}
+
+	if majorVersion == major && minorVersion >= minor {
+		return true
+	}
+
+	return false
 }
 
 // getPythonVersion returns the Python version as a string.
