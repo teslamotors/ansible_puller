@@ -40,7 +40,16 @@ func makeVenv(cfg VenvConfig) error {
 	useVenv := pythonVersionAtLeast(pythonVersion, 3, 3)
 	logrus.Debugln("Use venv:", useVenv)
 
-	cmd := exec.Command(cfg.Python, "-m", "venv", cfg.Path)
+	var cmd *exec.Cmd
+	if useVenv {
+		cmd = exec.Command(cfg.Python, "-m", "venv", cfg.Path)
+	} else {
+		venvExecutable, err := exec.LookPath("virtualenv")
+		if err != nil {
+			return errors.Wrap(err, "virtualenv not found in path")
+		}
+		cmd = exec.Command(venvExecutable, "--python", cfg.Python, cfg.Path)
+	}
 
 	err = cmd.Run()
 	if err != nil {
