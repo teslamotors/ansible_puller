@@ -33,7 +33,7 @@ type VenvConfig struct {
 func makeVenv(cfg VenvConfig) error {
 	pythonVersion, err := getPythonVersion(cfg.Python)
 	if err != nil {
-	        return errors.Wrap(err, "unable to determine Python version")
+		return errors.Wrap(err, "unable to determine Python version")
 	}
 	logrus.Debugln("Detected Python version:", pythonVersion)
 
@@ -53,8 +53,8 @@ func makeVenv(cfg VenvConfig) error {
 
 	err = cmd.Run()
 	if err != nil {
-	        failedCommandLogger(cmd)
-	        return errors.Wrap(err, "unable to create virtual environment")
+		failedCommandLogger(cmd)
+		return errors.Wrap(err, "unable to create virtual environment")
 	}
 
 	return nil
@@ -97,13 +97,13 @@ func getPythonVersion(python string) (string, error) {
 
 	err := cmd.Run()
 	if err != nil {
-	        return "", errors.Wrap(err, "unable to execute Python version command")
+		return "", errors.Wrap(err, "unable to execute Python version command")
 	}
 
 	versionOutput := strings.TrimSpace(out.String())
 	parts := strings.Fields(versionOutput)
 	if len(parts) != 2 {
-	        return "", errors.New("unexpected output from Python version command")
+		return "", errors.New("unexpected output from Python version command")
 	}
 
 	return parts[1], nil
