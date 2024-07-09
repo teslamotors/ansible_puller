@@ -37,6 +37,7 @@ func makeVenv(cfg VenvConfig) error {
 	}
 	logrus.Debugln("Detected Python version:", pythonVersion)
 
+        // venv was introduced in python version 3.3
 	useVenv := pythonVersionAtLeast(pythonVersion, 3, 3)
 	logrus.Debugln("Use venv:", useVenv)
 
