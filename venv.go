@@ -30,15 +30,42 @@ type VenvConfig struct {
 
 // Takes a VenvConfig and will create a new virtual environment.
 func makeVenv(cfg VenvConfig) error {
+	pythonVersion, err := getPythonVersion(cfg.Python)
+	if err != nil {
+	        return errors.Wrap(err, "unable to determine Python version")
+	}
+	logrus.Debugln("Detected Python version:", pythonVersion)
+
 	cmd := exec.Command(cfg.Python, "-m", "venv", cfg.Path)
 
-	err := cmd.Run()
+	err = cmd.Run()
 	if err != nil {
-		failedCommandLogger(cmd)
-		return errors.Wrap(err, "unable to create virtual environment")
+	        failedCommandLogger(cmd)
+	        return errors.Wrap(err, "unable to create virtual environment")
 	}
 
 	return nil
+}
+
+// getPythonVersion returns the Python version as a string.
+func getPythonVersion(python string) (string, error) {
+	cmd := exec.Command(python, "--version")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out // Some versions output version info to stderr
+
+	err := cmd.Run()
+	if err != nil {
+	        return "", errors.Wrap(err, "unable to execute Python version command")
+	}
+
+	versionOutput := strings.TrimSpace(out.String())
+	parts := strings.Fields(versionOutput)
+	if len(parts) != 2 {
+	        return "", errors.New("unexpected output from Python version command")
+	}
+
+	return parts[1], nil
 }
 
 // Ensure ensures that a virtual environment exists, if not, it attempts to create it
