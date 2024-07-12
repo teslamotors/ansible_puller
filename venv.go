@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -30,12 +31,26 @@ type VenvConfig struct {
 
 // Takes a VenvConfig and will create a new virtual environment.
 func makeVenv(cfg VenvConfig) error {
-	venvExecutable, err := exec.LookPath("virtualenv")
+	pythonVersion, err := getPythonVersion(cfg.Python)
 	if err != nil {
-		return errors.Wrap(err, "virtualenv not found in path")
+		return errors.Wrap(err, "unable to determine Python version")
 	}
+	logrus.Debugln("Detected Python version:", pythonVersion)
 
-	cmd := exec.Command(venvExecutable, "--python", cfg.Python, cfg.Path)
+        // venv was introduced in python version 3.3
+	useVenv := pythonVersionAtLeast(pythonVersion, 3, 3)
+	logrus.Debugln("Use venv:", useVenv)
+
+	var cmd *exec.Cmd
+	if useVenv {
+		cmd = exec.Command(cfg.Python, "-m", "venv", cfg.Path)
+	} else {
+		venvExecutable, err := exec.LookPath("virtualenv")
+		if err != nil {
+			return errors.Wrap(err, "virtualenv not found in path")
+		}
+		cmd = exec.Command(venvExecutable, "--python", cfg.Python, cfg.Path)
+	}
 
 	err = cmd.Run()
 	if err != nil {
@@ -44,6 +59,55 @@ func makeVenv(cfg VenvConfig) error {
 	}
 
 	return nil
+}
+
+// pythonVersionAtLeast checks if the Python version is at least major.minor.
+func pythonVersionAtLeast(version string, major int, minor int) bool {
+	parts := strings.Split(version, ".")
+	if len(parts) < 2 {
+		return false
+	}
+
+	majorVersion, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return false
+	}
+
+	minorVersion, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return false
+	}
+
+	if majorVersion > major {
+		return true
+	}
+
+	if majorVersion == major && minorVersion >= minor {
+		return true
+	}
+
+	return false
+}
+
+// getPythonVersion returns the Python version as a string.
+func getPythonVersion(python string) (string, error) {
+	cmd := exec.Command(python, "--version")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out // Some versions output version info to stderr
+
+	err := cmd.Run()
+	if err != nil {
+		return "", errors.Wrap(err, "unable to execute Python version command")
+	}
+
+	versionOutput := strings.TrimSpace(out.String())
+	parts := strings.Fields(versionOutput)
+	if len(parts) != 2 {
+		return "", errors.New("unexpected output from Python version command")
+	}
+
+	return parts[1], nil
 }
 
 // Ensure ensures that a virtual environment exists, if not, it attempts to create it
