@@ -16,8 +16,10 @@ import (
 
 type httpDownloader struct {
 	downloader
-	username string
-	password string
+	username    string
+	password    string
+	headerName  string
+	headerValue string
 }
 
 func (downloader httpDownloader) Download(remotePath, outputPath string) error {
@@ -38,6 +40,9 @@ func (downloader httpDownloader) Download(remotePath, outputPath string) error {
 
 	if downloader.username != "" && downloader.password != "" {
 		req.SetBasicAuth(downloader.username, downloader.password)
+	}
+	if downloader.headerName != "" && downloader.headerValue != "" {
+		req.Header.Set(downloader.headerName, downloader.headerValue)
 	}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -74,7 +79,9 @@ func (downloader httpDownloader) RemoteChecksum(checksumURL string) (string, err
 	if downloader.username != "" && downloader.password != "" {
 		req.SetBasicAuth(downloader.username, downloader.password)
 	}
-
+	if downloader.headerName != "" && downloader.headerValue != "" {
+		req.Header.Set(downloader.headerName, downloader.headerValue)
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to get remote md5sum")
