@@ -202,16 +202,27 @@ func (c VenvCommand) Run() VenvCommandRunOutput {
 			CommandOutput.Error = errors.Wrap(err, "unable to start command")
 			return CommandOutput
 		}
+		
+		output := map[io.ReadCloser]*string{
+			stdout: &CommandOutput.Stdout,
+			stderr: &CommandOutput.Stderr,
+		}
 
-		for _, stream := range []io.ReadCloser{stdout, stderr} {
-			go func(s io.ReadCloser) {
+		for stream, out := range output {
+			go func(s io.ReadCloser, o *string) {
+				var bufstdout bytes.Buffer
+				
 				scanner := bufio.NewScanner(s)
 				scanner.Split(bufio.ScanLines)
+					
 				for scanner.Scan() {
 					m := scanner.Text()
 					fmt.Println(m)
+					bufstdout.WriteString(m)
+					bufstdout.WriteString("\n")
 				}
-			}(stream)
+				*o = fmt.Sprint(bufstdout.String())
+			}(stream, out)
 		}
 
 		if err := cmd.Wait(); err != nil {
