@@ -210,18 +210,19 @@ func (c VenvCommand) Run() VenvCommandRunOutput {
 
 		for stream, out := range output {
 			go func(s io.ReadCloser, o *string) {
-				var bufstdout bytes.Buffer
+				var buff bytes.Buffer
 				
 				scanner := bufio.NewScanner(s)
 				scanner.Split(bufio.ScanLines)
-					
+
 				for scanner.Scan() {
 					m := scanner.Text()
 					fmt.Println(m)
-					bufstdout.WriteString(m)
-					bufstdout.WriteString("\n")
+					buff.WriteString(m)
+					buff.WriteString("\n")
 				}
-				*o = fmt.Sprint(bufstdout.String())
+				*o = fmt.Sprint(buff.String())
+				
 			}(stream, out)
 		}
 
