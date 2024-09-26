@@ -157,14 +157,14 @@ type VenvCommandRunOutput struct {
 
 func streamOutput(stream io.ReadCloser, outString *string) error {
 	var buff bytes.Buffer
-	scanner := bufio.NewScanner(stream)
+	reader := io.TeeReader(stream, &buff)
+
+	scanner := bufio.NewScanner(reader)
 	scanner.Split(bufio.ScanLines)
 
 	for scanner.Scan() {
 		m := scanner.Text()
 		fmt.Println(m)
-		buff.WriteString(m)
-		buff.WriteString("\n")
 	}
 	*outString = fmt.Sprint(buff.String())
 
