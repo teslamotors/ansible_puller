@@ -37,7 +37,7 @@ func makeVenv(cfg VenvConfig) error {
 	}
 	logrus.Debugln("Detected Python version:", pythonVersion)
 
-        // venv was introduced in python version 3.3
+	// venv was introduced in python version 3.3
 	useVenv := pythonVersionAtLeast(pythonVersion, 3, 3)
 	logrus.Debugln("Use venv:", useVenv)
 
@@ -155,6 +155,22 @@ type VenvCommandRunOutput struct {
 	Exitcode int
 }
 
+func streamOutput(stream io.ReadCloser, outString *string) error {
+	var buff bytes.Buffer
+	scanner := bufio.NewScanner(stream)
+	scanner.Split(bufio.ScanLines)
+
+	for scanner.Scan() {
+		m := scanner.Text()
+		fmt.Println(m)
+		buff.WriteString(m)
+		buff.WriteString("\n")
+	}
+	*outString = fmt.Sprint(buff.String())
+
+	return nil
+}
+
 // Run will execute the command described in VenvCommand.
 //
 // The strings returned are Stdout/Stderr.
@@ -202,29 +218,9 @@ func (c VenvCommand) Run() VenvCommandRunOutput {
 			CommandOutput.Error = errors.Wrap(err, "unable to start command")
 			return CommandOutput
 		}
-		
-		output := map[io.ReadCloser]*string{
-			stdout: &CommandOutput.Stdout,
-			stderr: &CommandOutput.Stderr,
-		}
 
-		for stream, out := range output {
-			go func(s io.ReadCloser, o *string) {
-				var buff bytes.Buffer
-				
-				scanner := bufio.NewScanner(s)
-				scanner.Split(bufio.ScanLines)
-
-				for scanner.Scan() {
-					m := scanner.Text()
-					fmt.Println(m)
-					buff.WriteString(m)
-					buff.WriteString("\n")
-				}
-				*o = fmt.Sprint(buff.String())
-				
-			}(stream, out)
-		}
+		go streamOutput(stdout, &CommandOutput.Stdout)
+		go streamOutput(stderr, &CommandOutput.Stderr)
 
 		if err := cmd.Wait(); err != nil {
 			exitError, _ := err.(*exec.ExitError)
