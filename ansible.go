@@ -82,11 +82,12 @@ func (a AnsibleConfig) FindInventoryForHost() (string, string, error) {
 
 			return "", "", err
 		}
+		playbook_path := filepath.Join(a.Cwd, viper.GetString("ansible-playbook"))
 
 		vCmd := VenvCommand{
 			Config: a.VenvConfig,
 			Binary: "ansible-playbook",
-			Args:   []string{viper.GetString("ansible-playbook"), "-i", inv, "--list-hosts"},
+			Args:   []string{playbook_path, "-i", inv, "--list-hosts"},
 			Cwd:    a.Cwd,
 		}
 
