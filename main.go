@@ -45,6 +45,14 @@ var (
 		Name: "ansible_puller_last_success",
 		Help: "UTC Epoch timestamp of last Successful Ansible run",
 	})
+
+	promAnsibleArtifactVersion = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "ansible_artifact_version",
+		Help: "Version of the Artifact used for the run",
+	},
+		[]string{"artifact_version"},
+	)
+
 	promAnsibleSummary = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "ansible_puller_play_summary",
 		Help: "Play status for Ansible run",
@@ -65,6 +73,13 @@ var (
 		Name: "ansible_puller_last_exit_code",
 		Help: "Return code from the last ansible execution",
 	})
+
+	promAnsibleRunSummary = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "ansible_puller_run_summary",
+		Help: "Play status for Ansible run",
+	},
+		[]string{"run_id", "ok", "skipped", "changed", "failed", "unreachable", "artifact_version", "run_end_time"},
+	)
 )
 
 func init() {
@@ -75,8 +90,10 @@ func init() {
 	prometheus.MustRegister(promAnsibleLastSuccess)
 	prometheus.MustRegister(promAnsibleLastExitCode)
 	prometheus.MustRegister(promAnsibleSummary)
+	prometheus.MustRegister(promAnsibleArtifactVersion)
 	prometheus.MustRegister(promVersion)
 	prometheus.MustRegister(promDebug)
+	prometheus.MustRegister(promAnsibleRunSummary)
 
 	viper.SetConfigName(appName)
 	viper.AddConfigPath(fmt.Sprintf("/etc/%s/", appName))
@@ -272,6 +289,22 @@ func ansibleRun() error {
 	promAnsibleSummary.WithLabelValues("changed").Set(float64(runOutput.Stats[target].Changed))
 	promAnsibleSummary.WithLabelValues("failures").Set(float64(runOutput.Stats[target].Failures))
 	promAnsibleSummary.WithLabelValues("unreachable").Set(float64(runOutput.Stats[target].Unreachable))
+
+	content, err := os.ReadFile(filepath.Join(aCfg.Cwd, "VERSION"))
+	if err != nil {
+		runLogger.Errorln("Unable to get the VERSION of artifact ", err)
+	}
+	artifact_version := string(content)
+	promAnsibleArtifactVersion.WithLabelValues(artifact_version).Set(1)
+	promAnsibleRunSummary.WithLabelValues(
+		runID,
+		fmt.Sprintf("%v", runOutput.Stats[target].Ok),
+		fmt.Sprintf("%v", runOutput.Stats[target].Skipped),
+		fmt.Sprintf("%v", runOutput.Stats[target].Changed),
+		fmt.Sprintf("%v", runOutput.Stats[target].Failures),
+		fmt.Sprintf("%v", runOutput.Stats[target].Unreachable),
+		artifact_version,
+		fmt.Sprintf("%f", float64(time.Now().Unix()))).Set(1)
 
 	runLogger.Infoln("Writing ansible output to logfile")
 
