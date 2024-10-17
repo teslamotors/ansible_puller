@@ -53,12 +53,6 @@ var (
 		[]string{"artifact_version"},
 	)
 
-	promAnsibleSummary = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "ansible_puller_play_summary",
-		Help: "Play status for Ansible run",
-	},
-		[]string{"status"},
-	)
 	promVersion = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "ansible_puller_version",
 		Help: "Current running version of Ansible Puller",
@@ -89,7 +83,6 @@ func init() {
 	prometheus.MustRegister(promAnsibleRunTime)
 	prometheus.MustRegister(promAnsibleLastSuccess)
 	prometheus.MustRegister(promAnsibleLastExitCode)
-	prometheus.MustRegister(promAnsibleSummary)
 	prometheus.MustRegister(promAnsibleArtifactVersion)
 	prometheus.MustRegister(promVersion)
 	prometheus.MustRegister(promDebug)
@@ -284,11 +277,6 @@ func ansibleRun() error {
 	}
 
 	promAnsibleLastExitCode.Set(float64(runOutput.CommandOutput.Exitcode))
-	promAnsibleSummary.WithLabelValues("ok").Set(float64(runOutput.Stats[target].Ok))
-	promAnsibleSummary.WithLabelValues("skipped").Set(float64(runOutput.Stats[target].Skipped))
-	promAnsibleSummary.WithLabelValues("changed").Set(float64(runOutput.Stats[target].Changed))
-	promAnsibleSummary.WithLabelValues("failures").Set(float64(runOutput.Stats[target].Failures))
-	promAnsibleSummary.WithLabelValues("unreachable").Set(float64(runOutput.Stats[target].Unreachable))
 
 	content, err := os.ReadFile(filepath.Join(aCfg.Cwd, "VERSION"))
 	if err != nil {
