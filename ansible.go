@@ -158,6 +158,7 @@ func (a AnsiblePlaybookRunner) Run() (AnsibleRunOutput, error) {
 				"ANSIBLE_STDOUT_CALLBACK=default",
 				"ANSIBLE_CALLBACK_WHITELIST=",
 			}
+			args = append(args, "-vvv")
 		} else {
 			a.Env = []string{
 				"ANSIBLE_STDOUT_CALLBACK=json",
