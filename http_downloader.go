@@ -62,7 +62,7 @@ func (downloader httpDownloader) Download(remotePath, outputPath string) error {
 
 func (downloader httpDownloader) RemoteChecksum(checksumURL string) (string, error) {
 
-	timeout := time.Duration(2 * time.Second)
+	timeout := time.Duration(5 * time.Second)
 	client := http.Client{
 		Timeout: timeout,
 	}
