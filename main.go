@@ -46,7 +46,7 @@ var (
 		Help: "UTC Epoch timestamp of last Successful Ansible run",
 	})
 
-	promAnsibleArtifactVersion = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	promAnsibleArtifactVersion = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "ansible_artifact_version",
 		Help: "Version of the Artifact used for the run",
 	},
@@ -280,10 +280,10 @@ func ansibleRun() error {
 
 	content, err := os.ReadFile(filepath.Join(aCfg.Cwd, "VERSION"))
 	if err != nil {
-		runLogger.Errorln("Unable to get the VERSION of artifact ", err)
+		runLogger.Errorln("Unable to get the VERSION of artifact", err)
 	}
 	artifact_version := string(content)
-	promAnsibleArtifactVersion.WithLabelValues(artifact_version).Set(1)
+	promAnsibleArtifactVersion.WithLabelValues(artifact_version).Inc()
 	promAnsibleRunSummary.WithLabelValues(
 		runID,
 		fmt.Sprintf("%v", runOutput.Stats[target].Ok),
