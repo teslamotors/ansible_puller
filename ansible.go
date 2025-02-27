@@ -7,12 +7,17 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
+
+// Regex for parsing ansible run stats from stdout
+var recapRegex = regexp.MustCompile(`(\S+)\s+:\s+ok=(\d+)\s+changed=(\d+)\s+unreachable=(\d+)\s+failed=(\d+)\s+skipped=(\d+)\s+rescued=(\d+)\s+ignored=(\d+)`)
 
 // AnsibleConfig is a collection of meta-information about an Ansible repository.
 //
@@ -139,6 +144,101 @@ type AnsiblePlaybookRunner struct {
 	Env             []string // Envvars to pass into the Ansible run
 }
 
+// Parse Ansible Run Status from output
+func parseAnsibleRunStats(ansibleOutput AnsibleRunOutput) (AnsibleRunOutput, error) {
+	var err error
+
+	if ansibleOutput.CommandOutput.Error != nil {
+		return ansibleOutput, errors.Wrap(ansibleOutput.CommandOutput.Error, "Ansible run failed")
+	}
+
+	logrus.Debug("Ansible stdout:\n", ansibleOutput.CommandOutput.Stdout, "Ansible stderr:\n", ansibleOutput.CommandOutput.Stderr)
+
+	if viper.GetBool("debug") {
+		ansibleOutput, err = parsePlayRecap(ansibleOutput)
+		if err != nil {
+			return ansibleOutput, errors.Wrap(err, "unable to Parse PLAY RECAP")
+		}
+	} else {
+		ansibleOutput, err = parseJsonOutput(ansibleOutput)
+		if err != nil {
+			return ansibleOutput, errors.Wrap(err, "unable to Parse JSON OUPTUT")
+		}
+	}
+	return ansibleOutput, nil
+}
+
+// Parse JSON Output: ANSIBLE_STDOUT_CALLBACK=json
+func parseJsonOutput(ansibleOutput AnsibleRunOutput) (AnsibleRunOutput, error) {
+
+	// Unmarshal JSON output: if ANSIBLE_STDOUT_CALLBACK=json
+	if jsonErr := json.Unmarshal([]byte(ansibleOutput.CommandOutput.Stdout), &ansibleOutput); jsonErr != nil {
+		return ansibleOutput, errors.Wrap(jsonErr, "unable to parse JSON output")
+	}
+	return ansibleOutput, nil
+}
+
+// Parse PLAY RECAP from ansible run output: ANSIBLE_STDOUT_CALLBACK=default
+func parsePlayRecap(ansibleOutput AnsibleRunOutput) (AnsibleRunOutput, error) {
+
+	lines := strings.Split(ansibleOutput.CommandOutput.Stdout, "\n")
+
+	recapFound := false
+	for _, line := range lines {
+		if strings.Contains(line, "PLAY RECAP") {
+			recapFound = true
+			continue
+		}
+		if recapFound && strings.TrimSpace(line) != "" {
+			matches := recapRegex.FindStringSubmatch(line)
+
+			if len(matches) != 9 {
+				return ansibleOutput, errors.New("unable to parse Stats from output")
+			}
+
+			// Parse task counts from matches
+			okCount, err := strconv.Atoi(matches[2])
+			if err != nil {
+				return ansibleOutput, errors.Wrap(err, "failed to parse 'ok' status count")
+			}
+			changedCount, err := strconv.Atoi(matches[3])
+			if err != nil {
+				return ansibleOutput, errors.Wrap(err, "failed to parse 'changed' status count")
+			}
+			unreachableCount, err := strconv.Atoi(matches[4])
+			if err != nil {
+				return ansibleOutput, errors.Wrap(err, "failed to parse 'unreachable' status count")
+			}
+			failedCount, err := strconv.Atoi(matches[5])
+			if err != nil {
+				return ansibleOutput, errors.Wrap(err, "failed to parse 'failed' status count")
+			}
+			skippedCount, err := strconv.Atoi(matches[6])
+			if err != nil {
+				return ansibleOutput, errors.Wrap(err, "failed to parse 'skipped' status count")
+			}
+
+			// Populate stats for the node
+			stats := AnsibleNodeStatus{
+				Ok:          okCount,
+				Changed:     changedCount,
+				Unreachable: unreachableCount,
+				Failures:    failedCount,
+				Skipped:     skippedCount,
+			}
+			logrus.Debug("Parse stats for host: ", matches[1])
+			ansibleOutput.Stats = make(map[string]AnsibleNodeStatus)
+			// matches[1] is the NodeName/target
+			ansibleOutput.Stats[matches[1]] = stats
+
+		}
+	}
+	if !recapFound {
+		return ansibleOutput, errors.New("unable to find PLAY RECAP in stdout for Ansible run stats")
+	}
+	return ansibleOutput, nil
+}
+
 // Run executes the ansible-playbook command defined in the associated AnsiblePlaybookRunner.
 func (a AnsiblePlaybookRunner) Run() (AnsibleRunOutput, error) {
 	args := []string{a.PlaybookPath, "-i", a.InventoryPath}
@@ -180,15 +280,9 @@ func (a AnsiblePlaybookRunner) Run() (AnsibleRunOutput, error) {
 	var ansibleOutput AnsibleRunOutput
 	ansibleOutput.CommandOutput = vCmd.Run()
 
-	jsonErr := json.Unmarshal([]byte(ansibleOutput.CommandOutput.Stdout), &ansibleOutput)
-	if ansibleOutput.CommandOutput.Error != nil && jsonErr != nil {
-		logrus.Debug("Could not parse JSON from run. Ansible stdout:\n", ansibleOutput.CommandOutput.Stdout, "Ansible stderr:\n", ansibleOutput.CommandOutput.Stderr)
-	}
-	if ansibleOutput.CommandOutput.Error != nil {
-		return ansibleOutput, errors.Wrap(ansibleOutput.CommandOutput.Error, "ansible run failed")
-	}
-	if jsonErr != nil {
-		return ansibleOutput, errors.Wrap(jsonErr, "unable to parse ansible JSON stdout")
+	var err error
+	if ansibleOutput, err = parseAnsibleRunStats(ansibleOutput); err != nil {
+		return ansibleOutput, errors.Wrap(err, "unable to parse Ansible run stats")
 	}
 
 	return ansibleOutput, nil
