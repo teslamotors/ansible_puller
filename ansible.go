@@ -7,12 +7,17 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
+
+// Regex for parsing ansible run stats from stdout
+var recapRegex = regexp.MustCompile(`(\S+)\s+:\s+ok=(\d+)\s+changed=(\d+)\s+unreachable=(\d+)\s+failed=(\d+)\s+skipped=(\d+)\s+rescued=(\d+)\s+ignored=(\d+)`)
 
 // AnsibleConfig is a collection of meta-information about an Ansible repository.
 //
@@ -139,6 +144,83 @@ type AnsiblePlaybookRunner struct {
 	Env             []string // Envvars to pass into the Ansible run
 }
 
+// Parse Ansible Run Stats from output
+func parseAnsibleRunStats(ansibleOutput AnsibleRunOutput) (AnsibleRunOutput, error) {
+	var err error
+
+	logrus.Debug("Ansible stdout:\n", ansibleOutput.CommandOutput.Stdout, "Ansible stderr:\n", ansibleOutput.CommandOutput.Stderr)
+
+	if viper.GetBool("debug") {
+		// Expecting "PLAY RECAP" format when debug mode is on, i.e: ANSIBLE_STDOUT_CALLBACK=default
+		ansibleOutput, err = parsePlayRecap(ansibleOutput)
+		return ansibleOutput, errors.Wrap(err, "unable to Parse PLAY RECAP")
+	}
+
+	// Unmarshal JSON output: if ANSIBLE_STDOUT_CALLBACK=json
+	err = json.Unmarshal([]byte(ansibleOutput.CommandOutput.Stdout), &ansibleOutput)
+	return ansibleOutput, errors.Wrap(err, "unable to parse JSON output")
+}
+
+// Parse PLAY RECAP from ansible run output: ANSIBLE_STDOUT_CALLBACK=default
+func parsePlayRecap(ansibleOutput AnsibleRunOutput) (AnsibleRunOutput, error) {
+
+	lines := strings.Split(ansibleOutput.CommandOutput.Stdout, "\n")
+
+	recapFound := false
+	ansibleOutput.Stats = make(map[string]AnsibleNodeStatus)
+
+	for _, line := range lines {
+		if strings.Contains(line, "PLAY RECAP") {
+			recapFound = true
+			continue
+		}
+		if !recapFound || strings.TrimSpace(line) == "" {
+			continue
+		}
+
+		matches := recapRegex.FindStringSubmatch(line)
+
+		if len(matches) != 9 {
+			return ansibleOutput, errors.New("recap line doesn't match the expected format")
+		}
+		var okCount, changedCount, unreachableCount, failedCount, skippedCount int
+		var err error
+
+		// Parse task counts from matches
+		if okCount, err = strconv.Atoi(matches[2]); err != nil {
+			return ansibleOutput, errors.Wrap(err, "failed to parse 'ok' status count")
+		}
+		if changedCount, err = strconv.Atoi(matches[3]); err != nil {
+			return ansibleOutput, errors.Wrap(err, "failed to parse 'changed' status count")
+		}
+		if unreachableCount, err = strconv.Atoi(matches[4]); err != nil {
+			return ansibleOutput, errors.Wrap(err, "failed to parse 'unreachable' status count")
+		}
+		if failedCount, err = strconv.Atoi(matches[5]); err != nil {
+			return ansibleOutput, errors.Wrap(err, "failed to parse 'failed' status count")
+		}
+		if skippedCount, err = strconv.Atoi(matches[6]); err != nil {
+			return ansibleOutput, errors.Wrap(err, "failed to parse 'skipped' status count")
+		}
+
+		// Populate stats for the node
+		stats := AnsibleNodeStatus{
+			Ok:          okCount,
+			Changed:     changedCount,
+			Unreachable: unreachableCount,
+			Failures:    failedCount,
+			Skipped:     skippedCount,
+		}
+		logrus.Debug("Parse stats for host: ", matches[1])
+		// matches[1] is the NodeName/target
+		ansibleOutput.Stats[matches[1]] = stats
+	}
+	if !recapFound {
+		return ansibleOutput, errors.New("unable to find PLAY RECAP in stdout for Ansible run stats")
+	}
+	return ansibleOutput, nil
+}
+
 // Run executes the ansible-playbook command defined in the associated AnsiblePlaybookRunner.
 func (a AnsiblePlaybookRunner) Run() (AnsibleRunOutput, error) {
 	args := []string{a.PlaybookPath, "-i", a.InventoryPath}
@@ -180,16 +262,11 @@ func (a AnsiblePlaybookRunner) Run() (AnsibleRunOutput, error) {
 	var ansibleOutput AnsibleRunOutput
 	ansibleOutput.CommandOutput = vCmd.Run()
 
-	jsonErr := json.Unmarshal([]byte(ansibleOutput.CommandOutput.Stdout), &ansibleOutput)
-	if ansibleOutput.CommandOutput.Error != nil && jsonErr != nil {
-		logrus.Debug("Could not parse JSON from run. Ansible stdout:\n", ansibleOutput.CommandOutput.Stdout, "Ansible stderr:\n", ansibleOutput.CommandOutput.Stderr)
-	}
 	if ansibleOutput.CommandOutput.Error != nil {
-		return ansibleOutput, errors.Wrap(ansibleOutput.CommandOutput.Error, "ansible run failed")
-	}
-	if jsonErr != nil {
-		return ansibleOutput, errors.Wrap(jsonErr, "unable to parse ansible JSON stdout")
+		return ansibleOutput, errors.Wrap(ansibleOutput.CommandOutput.Error, "Ansible run failed")
 	}
 
-	return ansibleOutput, nil
+	var err error
+	ansibleOutput, err = parseAnsibleRunStats(ansibleOutput)
+	return ansibleOutput, errors.Wrap(err, "unable to parse Ansible run stats")
 }
