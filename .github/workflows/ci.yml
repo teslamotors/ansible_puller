@@ -5,7 +5,7 @@ jobs:
     name: test
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: bazelbuild/setup-bazelisk@v2
       - name: Mount bazel cache
         uses: actions/cache@v3
