@@ -6,10 +6,11 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      - uses: bazel-contrib/setup-bazel@0.14.0
+      - uses: bazelbuild/setup-bazelisk@v3
+      - name: Mount bazel cache
+        uses: actions/cache@v4
         with:
-          bazelisk-cache: true
-          disk-cache: ${{ runner.os }}-bazel-cache
-          repository-cache: true
+          path: "~/.cache/bazel"
+          key: ${{ runner.os }}-bazel-cache
       - run: bazel build //...
       - run: bazel test //...
