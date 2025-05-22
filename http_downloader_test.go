@@ -18,8 +18,8 @@ var (
 	testFilenameHash = "testfile.txt.md5"
 	testMD5          = "7b20fda6af27c1b59ebdd8c09a93e770"
 
-  testEmptyChecksumUrl  = ""
-  testChecksumUrlPath   = "custom.txt.md5"
+	testEmptyChecksumUrl = ""
+	testChecksumUrlPath  = "custom.txt.md5"
 
 	testHashlessFilename = "nohash.txt"
 	testHashlessText     = []byte("Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.")
@@ -68,7 +68,7 @@ func (s *HttpDownloaderTestSuite) SetupTest() {
 					rw.Write(testText)
 				case "/" + testFilenameHash:
 					rw.Write([]byte(testMD5))
-        case "/" + testChecksumUrlPath:
+				case "/" + testChecksumUrlPath:
 					rw.Write([]byte(testMD5))
 				case "/" + testHashlessFilename:
 					rw.Write(testHashlessText)

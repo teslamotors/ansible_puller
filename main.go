@@ -87,7 +87,8 @@ func init() {
 	pflag.String("http-proto", "https", "Set to 'http' if necessary")
 	pflag.String("http-user", "", "HTTP username for pulling the remote file")
 	pflag.String("http-pass", "", "HTTP password for pulling the remote file")
-
+	pflag.String("http-header-name", "", "HTTP header name")
+	pflag.String("http-header-value", "", "HTTP header value")
 	pflag.String("http-url", "", "Remote endpoint to retrieve the file from")
 	pflag.String("http-checksum-url", "", "Remote endpoint to retrieve the checksum from")
 	pflag.String("s3-arn", "", "Remote object ARN in S3 to retrieve")
@@ -168,6 +169,8 @@ func getAnsibleRepository(runDir string) error {
 		downloader := httpDownloader{
 			username: viper.GetString("http-user"),
 			password: viper.GetString("http-pass"),
+			headerName: viper.GetString("http-header-name"),
+			headerValue: viper.GetString("http-header-value"),
 		}
 		err = idempotentFileDownload(downloader, remoteHttpURL, checksumURL, localCacheFile)
 	} else if s3Obj != "" {
