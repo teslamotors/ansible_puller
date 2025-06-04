@@ -44,6 +44,7 @@ go_library(
     ],
     importpath = "github.com/teslamotors/ansible_puller",
     visibility = ["//visibility:private"],
+    x_defs = {"main.Version": "{STABLE_GIT_COMMIT}"},
     deps = [
         "@com_github_aws_aws_sdk_go_v2//aws",
         "@com_github_aws_aws_sdk_go_v2_config//:config",
@@ -58,7 +59,6 @@ go_library(
         "@com_github_spf13_pflag//:pflag",
         "@com_github_spf13_viper//:viper",
     ],
-    x_defs = {"main.Version": "{STABLE_GIT_COMMIT}"}
 )
 
 #
@@ -80,6 +80,7 @@ go_test(
     ],
     embed = [":ansible_puller_lib"],
     deps = [
+        "@com_github_google_go_cmp//cmp",
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//suite",
     ],
