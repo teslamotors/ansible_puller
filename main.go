@@ -220,6 +220,8 @@ func ansibleRun() error {
 	runLogger.Infoln("Pulling remote repository")
 	if err = getAnsibleRepository(runDir); err != nil {
 		runLogger.Errorln("Unable to pull ansible repository: ", err)
+		// Address not available (EADDRNOTAVAIL) to Remote repository pull failed
+		promAnsibleLastExitCode.Set(125)
 		return err
 	}
 
@@ -230,10 +232,14 @@ func ansibleRun() error {
 
 	runLogger.Infoln("Ensuring virtualenv exists")
 	if err = vCfg.Ensure(); err != nil {
+		// No such file or directory (ENOENT) to inform virtual env was not created successfully
+		promAnsibleLastExitCode.Set(2)
 		return err
 	}
 	runLogger.Infoln("Updating virtualenv")
 	if err = vCfg.Update(filepath.Join(runDir, viper.GetString("venv-requirements-file"))); err != nil {
+		// I/O error (EIO) failed to update virtual env
+		promAnsibleLastExitCode.Set(5)
 		return err
 	}
 

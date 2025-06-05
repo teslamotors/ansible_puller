@@ -98,6 +98,18 @@ It currently produces the number of tasks that are ok, skipped, changed, failed,
 | `ansible_puller_runs`             | How many times the puller has run                            |
 | `ansible_puller_version`          | Version (git sha) of the puller                              |
 
+#### Exit code mapping
+
+Following are some of internal ansible-puller errors and corresponding exit codes 
+
+| Exit code  | Error explained               | 
+|------------|-------------------------------|
+| 2          | virtualenv creation failed    |
+| 5          | virtual env update failed     |
+| 6          | inventory fetch failed        |
+|125         | Remote repository pull failed |
+
+
 ### MD5 checksum support
 
 Enabling MD5 checksumming will prevent extraneous calls to download the ansible tarball from the
