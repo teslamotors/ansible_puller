@@ -50,6 +50,7 @@ go_library(
         "@com_github_aws_aws_sdk_go_v2_config//:config",
         "@com_github_aws_aws_sdk_go_v2_feature_s3_manager//:manager",
         "@com_github_aws_aws_sdk_go_v2_service_s3//:s3",
+        "@com_github_fsnotify_fsnotify//:fsnotify",
         "@com_github_gorilla_mux//:mux",
         "@com_github_pkg_errors//:errors",
         "@com_github_prometheus_client_golang//prometheus",
