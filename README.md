@@ -147,10 +147,15 @@ or, without bazel
 
 `go run .`
 
+#### Updating Dependencies
+
+Update go.mod and regenerate deps.bzl:
+
+`go mod tidy && bazelisk run //:update-deps`
+
 #### Running tests
 
 `bazelisk test //...`
-
 
 #### Building a Production Release
 
@@ -160,7 +165,6 @@ or, without bazel
 
 * `bazelisk build --config=release //:ansible_puller_deb`
 * `bazelisk build --config=release //:ansible_puller_rpm`
-
 
 #### Debugging an Ansible Run
 
