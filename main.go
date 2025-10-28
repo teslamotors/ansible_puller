@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	uuid "github.com/satori/go.uuid"
@@ -67,6 +68,37 @@ var (
 	})
 )
 
+func loadConfig() error {
+	err := viper.ReadInConfig()
+	if err != nil {
+		logrus.Warnf("Unable to read config file: %s", err)
+		return errors.Wrap(err, "unable to read config file")
+	}
+
+	err = viper.BindPFlags(pflag.CommandLine)
+	if err != nil {
+		logrus.Warnf("Unable to bind configuration: %s", err)
+		return errors.Wrap(err, "unable to bind configuration")
+	}
+	pflag.Parse()
+
+	logrus.SetOutput(os.Stdout)
+	if viper.GetBool("debug") {
+		logrus.SetLevel(logrus.DebugLevel)
+		promDebug.Set(1)
+	} else {
+		logrus.SetFormatter(&logrus.JSONFormatter{})
+		promDebug.Set(0)
+	}
+
+	if viper.GetBool("start-disabled") {
+		ansibleDisable()
+	} else {
+		ansibleEnable()
+	}
+	return nil
+}
+
 func init() {
 	prometheus.MustRegister(promAnsibleIsRunning)
 	prometheus.MustRegister(promAnsibleIsDisabled)
@@ -109,34 +141,24 @@ func init() {
 	pflag.Bool("once", false, "Run Ansible Puller just once, then exit")
 	pflag.Bool("version", false, "Print the build version, then exit")
 
-	err := viper.ReadInConfig()
-	if err != nil {
-		logrus.Fatalf("fatal error in config file: %s", err)
-	}
-
-	err = viper.BindPFlags(pflag.CommandLine)
-	if err != nil {
-		logrus.Fatal("unable to bind configuration")
-	}
-
-	pflag.Parse()
-
-	logrus.SetOutput(os.Stdout)
-	if viper.GetBool("debug") {
-		logrus.SetLevel(logrus.DebugLevel)
-		promDebug.Set(1)
-	} else {
-		logrus.SetFormatter(&logrus.JSONFormatter{})
-	}
-
-	if viper.GetBool("start-disabled") {
-		ansibleDisable()
-	}
-
+	var err error
 	hostname, err = os.Hostname()
 	if err != nil {
-		logrus.Fatal("Unable to detect hostname")
+		logrus.Fatalf("Unable to detect hostname: %s", err)
 	}
+
+	err = loadConfig()
+	if err != nil {
+		logrus.Fatalf("Unable to load config initial: %s", err)
+	}
+
+	viper.OnConfigChange(func(_ fsnotify.Event) {
+		logrus.Infoln("Change in config-file, re-loading")
+		if err := loadConfig(); err != nil {
+			logrus.Warningf("Unable to re-load config: %s", err)
+		}
+	})
+	viper.WatchConfig()
 
 }
 

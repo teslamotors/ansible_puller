@@ -59,6 +59,9 @@ a part of `site.yml`'s run. Use the `debug` option to get more insight to the pr
 
 Config file should be in: `/etc/ansible-puller/config.json`, `$HOME/.ansible-puller.json`, `./ansible-puller.json`
 
+**Note:** This application supports hot-reloading of config file. So any changes to the configuration file would take immediate effect on the subsequent ansible runs.
+Any command line flag takes precedence over config file vars.
+
 | Config Option            | Default                               | Description                                                                             |
 |--------------------------|---------------------------------------|-----------------------------------------------------------------------------------------|
 | `http-listen-string`     | `"0.0.0.0:31836"`                     | Address/port the service will listen on. Use `127.0.0.1:31386` to lock down the UI.     |
