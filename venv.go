@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/pkg/errors"
@@ -207,7 +208,7 @@ func (c VenvCommand) Run() VenvCommandRunOutput {
 	if c.Cwd != "" {
 		cmd.Dir = c.Cwd
 	}
-
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Env = append(os.Environ(), c.Env...)
 
 	if c.StreamOutput {
@@ -222,6 +223,12 @@ func (c VenvCommand) Run() VenvCommandRunOutput {
 		go streamOutput(stderr, &CommandOutput.Stderr)
 
 		if err := cmd.Wait(); err != nil {
+			if ctx.Err() == context.DeadlineExceeded {
+				CommandOutput.Error = errors.Wrap(err, "context deadline exceeded")
+				syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM)
+				return CommandOutput
+			}
+
 			exitError, _ := err.(*exec.ExitError)
 			CommandOutput.Error = errors.Wrap(err, "unable to complete command")
 			CommandOutput.Exitcode = exitError.ExitCode()
@@ -243,11 +250,13 @@ func (c VenvCommand) Run() VenvCommandRunOutput {
 	CommandOutput.Stderr = stderr.String()
 	CommandOutput.Stdout = stdout.String()
 
-	if ctx.Err() == context.DeadlineExceeded {
-		CommandOutput.Error = errors.Wrap(err, "Execution timed out")
-		return CommandOutput
-	} else if err != nil {
+	if err != nil {
 		failedCommandLogger(cmd)
+		if ctx.Err() == context.DeadlineExceeded {
+			CommandOutput.Error = errors.Wrap(err, "context deadline exceeded")
+			syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM)
+			return CommandOutput
+		}
 		if exitError, ok := err.(*exec.ExitError); ok {
 			CommandOutput.Exitcode = exitError.ExitCode()
 		}
