@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -62,6 +63,57 @@ func TestParsePlayRecap(t *testing.T) {
 
 	assert.Contains(t, ansibleOutput.Stats, target, "testhostname should be a key in the Stats map")
 	assert.Empty(t, cmp.Diff(expectedStats, ansibleOutput.Stats))
+}
+
+func TestParsePlayRecapWithTrailingTimerOutput(t *testing.T) {
+	// The ansible.posix.timer callback appends a summary line after the
+	// recap block; it must not break recap parsing.
+	var ansibleOutput AnsibleRunOutput
+	ansibleOutput.CommandOutput.Stdout = `
+		PLAY RECAP *********************************************************************
+		foo.bar.com : ok=3    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+
+		Playbook run took 0 days, 0 hours, 0 minutes, 10 seconds
+	`
+
+	ansibleOutput, err := parsePlayRecap(ansibleOutput)
+	assert.Nil(t, err)
+
+	expectedStats := map[string]AnsibleNodeStatus{
+		"foo.bar.com": {
+			Ok: 3,
+		},
+	}
+	assert.Empty(t, cmp.Diff(expectedStats, ansibleOutput.Stats))
+}
+
+func TestParseAnsibleRunStatsJSON(t *testing.T) {
+	viper.Set("debug", false)
+
+	jsonStats := `{"stats": {"foo.bar.com": {"changed": 1, "failures": 0, "ignored": 0, "ok": 3, "rescued": 0, "skipped": 2, "unreachable": 0}}}`
+	expectedStats := map[string]AnsibleNodeStatus{
+		"foo.bar.com": {
+			Ok:      3,
+			Changed: 1,
+			Skipped: 2,
+		},
+	}
+
+	var ansibleOutput AnsibleRunOutput
+	ansibleOutput.CommandOutput.Stdout = jsonStats
+
+	ansibleOutput, err := parseAnsibleRunStats(ansibleOutput)
+	assert.Nil(t, err)
+	assert.Empty(t, cmp.Diff(expectedStats, ansibleOutput.Stats))
+
+	// The ansible.posix.timer callback appends a summary line after the JSON
+	// document; it must not break stats parsing.
+	var withTrailer AnsibleRunOutput
+	withTrailer.CommandOutput.Stdout = jsonStats + "\nPlaybook run took 0 days, 0 hours, 0 minutes, 10 seconds\n"
+
+	withTrailer, err = parseAnsibleRunStats(withTrailer)
+	assert.Nil(t, err)
+	assert.Empty(t, cmp.Diff(expectedStats, withTrailer.Stats))
 }
 
 func TestParsePlayRecapFailed(t *testing.T) {

@@ -156,8 +156,10 @@ func parseAnsibleRunStats(ansibleOutput AnsibleRunOutput) (AnsibleRunOutput, err
 		return ansibleOutput, errors.Wrap(err, "unable to Parse PLAY RECAP")
 	}
 
-	// Unmarshal JSON output: if ANSIBLE_STDOUT_CALLBACK=json
-	err = json.Unmarshal([]byte(ansibleOutput.CommandOutput.Stdout), &ansibleOutput)
+	// Decode JSON output: if ANSIBLE_STDOUT_CALLBACK=json. A Decoder is used
+	// instead of json.Unmarshal so that trailing non-JSON output, such as the
+	// summary line added by the ansible.posix.timer callback, is ignored.
+	err = json.NewDecoder(strings.NewReader(ansibleOutput.CommandOutput.Stdout)).Decode(&ansibleOutput)
 	return ansibleOutput, errors.Wrap(err, "unable to parse JSON output")
 }
 
@@ -181,7 +183,10 @@ func parsePlayRecap(ansibleOutput AnsibleRunOutput) (AnsibleRunOutput, error) {
 		matches := recapRegex.FindStringSubmatch(line)
 
 		if len(matches) != 9 {
-			return ansibleOutput, errors.New("recap line doesn't match the expected format")
+			// Not a recap line: additional callbacks, such as
+			// ansible.posix.timer, can append output after the recap block.
+			logrus.Debug("Skipping non-recap line: ", line)
+			continue
 		}
 		var okCount, changedCount, unreachableCount, failedCount, skippedCount int
 		var err error
@@ -217,6 +222,9 @@ func parsePlayRecap(ansibleOutput AnsibleRunOutput) (AnsibleRunOutput, error) {
 	}
 	if !recapFound {
 		return ansibleOutput, errors.New("unable to find PLAY RECAP in stdout for Ansible run stats")
+	}
+	if len(ansibleOutput.Stats) == 0 {
+		return ansibleOutput, errors.New("recap line doesn't match the expected format")
 	}
 	return ansibleOutput, nil
 }
