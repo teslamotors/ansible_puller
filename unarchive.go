@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // Ensures that a given file is gzip-encoded
@@ -47,14 +48,14 @@ func extractTgz(src, dest string) error {
 
 	uncompressedStream, err := gzip.NewReader(tgzFile)
 	if err != nil {
-		errors.Wrap(err, "unable to make gzip reader")
+		return errors.Wrap(err, "unable to make gzip reader")
 	}
 	defer uncompressedStream.Close()
 
 	tarReader := tar.NewReader(uncompressedStream)
 
 	if _, err := os.Stat(dest); os.IsNotExist(err) {
-		if err := os.Mkdir(dest, 0755); err != nil {
+		if err := os.MkdirAll(dest, 0755); err != nil {
 			return errors.Wrap(err, "unable to create target directory")
 		}
 	}
@@ -72,6 +73,11 @@ func extractTgz(src, dest string) error {
 		}
 
 		targetPath := filepath.Join(dest, header.Name)
+		cleanDest := filepath.Clean(dest)
+		cleanTarget := filepath.Clean(targetPath)
+		if !strings.HasPrefix(cleanTarget, cleanDest+string(filepath.Separator)) && cleanTarget != cleanDest {
+			return fmt.Errorf("illegal file path in tar archive: %s", header.Name)
+		}
 
 		switch header.Typeflag {
 		case tar.TypeSymlink:
@@ -80,19 +86,21 @@ func extractTgz(src, dest string) error {
 			}
 
 		case tar.TypeDir:
-			if _, err := os.Stat(targetPath); os.IsNotExist(err) {
-				if err := os.Mkdir(targetPath, 0755); err != nil {
-					return errors.Wrap(err, "unable to create dir from tar")
-				}
+			if err := os.MkdirAll(targetPath, 0755); err != nil {
+				return errors.Wrap(err, "unable to create dir from tar")
 			}
 
 		case tar.TypeReg:
-			outFile, err := os.OpenFile(targetPath, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
+			if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+				return errors.Wrap(err, "unable to create parent dir from tar")
+			}
+			outFile, err := os.OpenFile(targetPath, os.O_CREATE|os.O_RDWR|os.O_TRUNC, os.FileMode(header.Mode))
 			if err != nil {
 				return errors.Wrap(err, "unable to create file from tar")
 			}
 
 			if _, err := io.Copy(outFile, tarReader); err != nil {
+				outFile.Close()
 				return errors.Wrap(err, "unable to populate file from tar")
 			}
 

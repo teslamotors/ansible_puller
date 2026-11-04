@@ -20,3 +20,5 @@ ansible_puller
 
 # Bazel output
 bazel-*
+
+testfile.txt
