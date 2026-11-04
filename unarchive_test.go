@@ -1,11 +1,16 @@
 package main
 
 import (
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
 // Register the below test suite
@@ -20,7 +25,7 @@ type UnarchiveTestSuite struct {
 
 func (s *UnarchiveTestSuite) SetupTest() {
 	var err error
-	s.tmpDir, err = ioutil.TempDir("/tmp", "ansible_puller")
+	s.tmpDir, err = ioutil.TempDir("", "ansible_puller")
 	assert.Nil(s.T(), err)
 }
 
@@ -32,11 +37,11 @@ func (s *UnarchiveTestSuite) TestTarballExists() {
 	err := extractTgz("testdata/good.tgz", s.tmpDir)
 	assert.Nil(s.T(), err)
 
-	stats, err := os.Stat(s.tmpDir + "/foo.txt")
+	stats, err := os.Stat(filepath.Join(s.tmpDir, "foo.txt"))
 	assert.Nil(s.T(), err)
 	assert.True(s.T(), stats.Mode().IsRegular(), "should create a regular foo file")
 
-	stats, err = os.Stat(s.tmpDir + "/bar.txt")
+	stats, err = os.Stat(filepath.Join(s.tmpDir, "bar.txt"))
 	assert.Nil(s.T(), err)
 	assert.True(s.T(), stats.Mode().IsRegular(), "should create a regular bar file")
 }
@@ -54,4 +59,34 @@ func (s *UnarchiveTestSuite) TestTarballIsCorrupted() {
 func (s *UnarchiveTestSuite) TestTarballHasInvalidBody() {
 	err := extractTgz("testdata/half.tgz", s.tmpDir)
 	assert.NotNil(s.T(), err)
+}
+
+func (s *UnarchiveTestSuite) TestTarballPathTraversalRejected() {
+	// Generate an in-memory tar.gz with a path traversal filename
+	var buf bytes.Buffer
+	gw := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gw)
+
+	content := []byte("traversal test")
+	hdr := &tar.Header{
+		Name:     "../escaped.txt",
+		Mode:     0600,
+		Size:     int64(len(content)),
+		Typeflag: tar.TypeReg,
+	}
+	err := tw.WriteHeader(hdr)
+	assert.Nil(s.T(), err)
+	_, err = tw.Write(content)
+	assert.Nil(s.T(), err)
+	assert.Nil(s.T(), tw.Close())
+	assert.Nil(s.T(), gw.Close())
+
+	maliciousTgz := filepath.Join(s.tmpDir, "malicious.tgz")
+	err = ioutil.WriteFile(maliciousTgz, buf.Bytes(), 0644)
+	assert.Nil(s.T(), err)
+
+	extractDir := filepath.Join(s.tmpDir, "extract")
+	err = extractTgz(maliciousTgz, extractDir)
+	assert.NotNil(s.T(), err, "should reject path traversal in tarball")
+	assert.Contains(s.T(), err.Error(), "illegal file path in tar archive")
 }

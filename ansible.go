@@ -96,9 +96,9 @@ func (a AnsibleConfig) FindInventoryForHost() (string, string, error) {
 		}
 
 		venvCommandOutput := vCmd.Run()
-		if err != nil {
+		if venvCommandOutput.Error != nil {
 			logrus.Debugln("Ansible inventory output:", venvCommandOutput.Stdout)
-			return "", "", errors.Wrap(err, "unable to list hosts for "+item)
+			return "", "", errors.Wrap(venvCommandOutput.Error, "unable to list hosts for "+item)
 		}
 
 		cleanOutput := trimMultilineWhiteSpace(venvCommandOutput.Stdout)
